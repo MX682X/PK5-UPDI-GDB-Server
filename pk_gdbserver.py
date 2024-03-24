@@ -549,6 +549,7 @@ class gdb_server(threading.Thread):
             return self.create_rsp_packet(b"OK")
 
         return None
+        #EOF
 
     def handle_general_set(self, msg:bytes):
         feature = msg.split(b'#')[0]
@@ -752,8 +753,8 @@ class gdb_server(threading.Thread):
         arg, payload = cmd.split(b':')
         start, length = arg.split(b',')
         payload = unescape(payload)
-        start = int(start, 16)
-        length = int(length, 16)
+        start = self.decode_hex_string(start, 16)
+        length = self.decode_hex_string(length, 16)
         print("GDB Write Binary Data Start: 0x{0:04X}, Len: {1}, Data:".format(start, length))
         
         output = ""

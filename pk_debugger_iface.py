@@ -1146,7 +1146,7 @@ class pk_debugger(threading.Thread):
 
     def send_script_done(self, func:str):
         script_done_type = 0x0103  # == 259
-        transfer = self.create_msg_header(script_done_type, 0, 16, 0)
+        transfer = self.create_msg_header(script_done_type, 16, 0)
         self._icd.write(self._cmd_write_ep, transfer)
 
         self.read_response(func)
@@ -1159,7 +1159,7 @@ class pk_debugger(threading.Thread):
             key += b"\x00"  # Add String NULL terminator if there is none
         message_len = 16 + len(key) + 1 
 
-        transfer = self.create_msg_header(type, 0, message_len, 0)
+        transfer = self.create_msg_header(type, message_len, 0)
         transfer += key
 
         self._icd.write(self._cmd_write_ep, transfer)
