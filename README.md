@@ -16,7 +16,8 @@ Disclaimers:
 
 
 To Work with the Arduno IDE you must add following lines to your platform.txt:
-'''
+
+```
 debug.executable={build.path}/{build.project_name}.elf
 debug.toolchain.prefix=avr-
 debug.toolchain=gcc
@@ -28,4 +29,4 @@ debug.server.external.script=
 debug.cortex-debug.custom.gdbTarget=localhost:50000
 debug.cortex-debug.custom.postLaunchCommands.0=set remote hardware-watchpoint-limit 2
 debug.cortex-debug.custom.postLaunchCommands.1=set breakpoint auto-hw off
-''' 
+```
