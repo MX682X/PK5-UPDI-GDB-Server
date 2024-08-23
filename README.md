@@ -11,7 +11,7 @@ Things to know:
 5. You'll need a copy of avr-gdb.exe with XML support. One is distributed with the Studio. It needs to be copied to the compiler dictionary
 6. To start a GDB session, execute e.g. `pk_gdbserver.py -pavr32dd28 -V5000 -b750 -a` in a command line
  - -p specifies the part name
- - -V when using a PK4/5 allows you to use the Power supply feature
+ - -V when using a PK4/5 allows you to use the Power supply feature (Value in mV)
  - -b specifies the UPDI Clock in kHz
  - -a keeps the session alive even if you stop it in the Arduino IDE (Allows you to upload new code without restarting the server)
 
