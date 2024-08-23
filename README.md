@@ -1,18 +1,22 @@
 # Arduino IDE GDB Server for UPDI Debugging
  Python Script to start a debugging session with the manufacturer's ICDs
 
-Disclaimers:
+Things to know:
 1. I tried to avoid any trade-marketed terms, as I'm not affiliated with them,  so don't be surprised for my choice of words
-2. I tried to write this whole thing real quick, couldn't be a big deal, right? Ended up taking longer then expected.
-3. I have to focus on something else right now, this is why this is not finished yet.
-3. I'm no Python programmer, so the syntax is not the best.
-4. Still has a couple of bugs, but works more or less. (Breakpoints, CPU registers, Stepping, Flash Up- and Downloading)
-5. needs pyusb, libusb_package and ElementTree python package to work
-6. Consider this more as a proof of concept then anything else
-7. Gonna need some expanding to work with more then the AVRxxDD28/DD32.
-8. You'll need a copy of avr-gdb.exe with XML support. One is distributed with the Studio
-9. Big thanks to pyOCD's gdbserver code, as without it, it would have taken way longer.
-10. To start a gdb session, execute pk_dgb.py
+2. I'm no experienced Python programmer, so don't expect much code wise
+3. There might be some bugs, but I hope I've ironed out most.
+  - Known bugs: The Arduino debugger plug-in seems to hang after resetting the target
+4. needs pyusb, libusb_package and ElementTree python package to work
+5. You'll need a copy of avr-gdb.exe with XML support. One is distributed with the Studio. It needs to be copied to the compiler dictionary
+6. To start a GDB session, execute e.g. "pk_gdbserver.py -pavr32dd28 -V5000 -b750 -a" in a command lines
+ - -p specifies the part name
+ - -V when using a PK4/5 allows you to use the Power supply feature
+ - -b specifies the UPDI Clock in kHz
+ - -a keeps the session alive even if you stop it in the Arduino IDE (Allows you to upload new code without restarting the server)
+
+
+Credit where credit is due:
+- Big thanks to pyOCD's gdbserver code, as without it, it would have taken way longer to figure out gdb's inner workings
 
 
 To Work with the Arduno IDE you must add following lines to your platform.txt:
@@ -26,7 +30,8 @@ debug.server=external
 debug.server.external.path={compiler.path}
 debug.server.external.scripts_dir=
 debug.server.external.script=
+debug.cortex-debug.custom.device={build.mcu}
 debug.cortex-debug.custom.gdbTarget=localhost:50000
-debug.cortex-debug.custom.postLaunchCommands.0=set remote hardware-watchpoint-limit 2
-debug.cortex-debug.custom.postLaunchCommands.1=set breakpoint auto-hw off
+debug.cortex-debug.custom.preLaunchCommands.0=set remote hardware-breakpoint-limit 2
+#debug.cortex-debug.custom.showDevDebugOutput=raw
 ```

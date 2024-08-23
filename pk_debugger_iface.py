@@ -1,493 +1,104 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-
-
-EnterProgMode_UPDI_cmd = 0x00003000
-EnterProgMode_UPDI = [      # len = 0x013E (345)
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x00, 0x1E, 0x01, 0x00, 
-0x01, 0xFD, 0x19, 0x00, 0x00, 0x00, 0x08, 0x01, 
-0x94, 0x32, 0x00, 
-0x94, 0x40, 0x00, 
-0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 
-0x6C, 0x01, 0x66, 0x01, 0x08, 0x00, 0x00, 0x00, 
-0xFE, 0x01, 0x08, 0x00, 0x00, 0x00, 0x26, 0x01, 
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x59, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x01, 0x00, 
-0x65, 0x20, 0x67, 0x6F, 0x72, 0x04, # NVMPROG Key (Little Endian)
-0x65, 0x50, 0x4D, 0x56, 0x4E, 0x04, # 0x4E564D50726F6720
-0x1E, 0x11, 0x01, 0x9B, 0x02, 0x07, 0x1E, 0x0E, 0x02, 
-0x6C, 0x03, 0x66, 0x03, 0x10, 0x00, 0x00, 0x00, 
-0x9B, 0x04, 0x10, 0xFC, 0x03, 0x04, 0x1E, 0x01, 
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x59, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x01, 0x0B, 0xA2, 0x1E, 0x0E, 0x01, 
-0xA5, 0x20, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x0A, 0x00, 
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x00, 0x1E, 0x0F, 0x00, 0x01,
-0x9B, 0x01, 0x0B, 0xA2, 0x1E, 0x0E, 0x01, 
-0xA5, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 
-0x94, 0x48, 0x00, 0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 
-0x6C, 0x01, 0x66, 0x01, 0x08, 0x00, 0x00, 0x00, 
-0xFE, 0x01, 0x08, 0x00, 0x00, 0x00, 0x26, 0x01, 
-0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 
-0x6C, 0x01, 0x66, 0x01, 0x01, 0x00, 0x00, 0x00, 
-0xFE, 0x01, 0x01, 0x00, 0x00, 0x00, 0x13, 0x01, 
-0x6C, 0x01, 0x66, 0x01, 0x02, 0x00, 0x00, 0x00, 
-0xFE, 0x01, 0x02, 0x00, 0x00, 0x00, 0x13, 0x01, 
-0x9B, 0x01, 0x0C, 0x1E, 0x0E, 0x01, 
-0x6C, 0x02, 0x66, 0x02, 0x04, 
-0x00, 0x00, 0x00, 0xFE, 0x02, 0x04, 
-0x00, 0x00, 0x00, 0x13, 0x01, 
-0x94, 0xF4, 0x01, 
-0x9B, 0x01, 0x0C, 0x1E, 0x0E, 0x01, 
-0x6C, 0x02, 0x66, 0x02, 0x04, 
-0x00, 0x00, 0x00, 0xFE, 0x02, 0x04, 
-0x00, 0x00, 0x00, 0x13, 0x01, 0xFB, 0x1E, 0x01, 
-0x90, 0x01, 0x51, 0x00, 0x00, 0x00, 0x7F, 0x01, 0xFB, 0x26, 0x01, 
-0x90, 0x01, 0x44, 0x00, 0x00, 0x00, 0x7F, 0x01, 0xFB, 0x26, 0x01, 
-0x90, 0x01, 0x00, 0x01, 0x00, 0x00, 0x7F, 0x01]
-
-
-ExitProgMode_UPDI_cmd = 0x00003100
-ExitProgMode_UPDI = [   # len = 0x2E (73)
-0x9B, 0x00, 0x08, 0x9B, 0x01, 
-0x59, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x00, 0x08, 0x9B, 0x01, 
-0x00, 0x1E, 0x0F, 0x00, 0x01, 0x1E, 0x02]
-
-SetSpeed_UPDI_cmd = 0x00001503
-SetSpeed_UPDI = [
-    0x91, 0x00, 0x1E, 0x14, 0x00 
-    ]
-
-
-GetDeviceID_UPDI_cmd = 0x00001505
-GetDeviceID_UPDI = [    # len = 0x39 (84)
-0x95, 0x90, 0x00, 0x00, 0x11, 0x00, 0x00, 0x1E, 0x09, 0x00, 
-0x9C, 0x01, 0x03, 0x00, 0x1E, 0x10, 0x01, 
-0x9B, 0x02, 0x03, 0x1E, 0x0C, 0x02, 
-0x90, 0x02, 0x01, 0x0F, 0x00, 0x00, 0x1E, 0x03, 0x02, 0x9F]
-
-
-EraseChip_UPDI_cmd = 0x00001200
-EraseChip_UPDI = [      # len = 0xD0 (235)
-0x94, 0x32, 0x00, 
-0x94, 0x40, 0x00, 
-0x90, 0x01, 0x00, 0x00, 0x00, 0x00, 
-0x65, 0x65, 0x73, 0x61, 0x72, 0x04, # 0x65736172 - UPDI Chiperase Key, little Enidian
-0x65, 0x45, 0x4D, 0x56, 0x4E, 0x04, # 0x454D564E ==> 0x4E564D4572617365
-0x1E, 0x11, 0x01, 
-0x90, 0x02, 0x07, 0x00, 0x00, 0x00, 
-0x1E, 0x0E, 0x02, 0x6C, 0x03, 
-0x66, 0x03, 0x08, 0x00, 0x00, 0x00, 0x90, 0x04, 
-0x08, 0x00, 0x00, 0x00, 0xFC, 0x03, 0x04, 0xAF, 0x00, 
-0x90, 0x00, 0x08, 0x00, 0x00, 0x00, 
-0x90, 0x01, 0x59, 0x00, 0x00, 0x00, 
-0x1E, 0x0F, 0x00, 0x01, 
-0x90, 0x01, 0x0B, 0x00, 0x00, 0x00, 0xA2, 
-0x1E, 0x0E, 0x01, 
-0xA5, 0x20, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x0A, 0x00, 
-0x90, 0x00, 0x08, 0x00, 0x00, 0x00, 
-0x90, 0x01, 0x00, 0x00, 0x00, 0x00, 
-0x1E, 0x0F, 0x00, 0x01, 
-0x90, 0x01, 0x0B, 0x00, 0x00, 0x00, 0xA2, 
-0x1E, 0x0E, 0x01, 
-0xA5, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 
-0x90, 0x01, 0x0B, 0x00, 0x00, 0x00, 0xA2, 
-0x94, 0x02, 0x00, 
-0x1E, 0x0E, 0x01, 
-0xA5, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF4, 0x01, 
-0x1E, 0x0E, 0x01, 0x6C, 0x03, 0x66, 0x03, 0x40, 0x00, 0x00, 0x00, 
-0xFE, 0x03, 0x40, 0x00, 0x00, 0x00, 0xAF, 0x00, 0xFB, 0xB7, 0x00, 
-0x90, 0x01, 0x00, 0x01, 0x00, 0x00, 0x7F, 0x01, 0x5A]
-
-
-
-
-
-WriteProgmem_UPDI = [   # len = 0x0130  (331)
-0x91, 0x00, 0x91, 0x01, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x11, 0x00, 0x00, 0x00, 0x00, 
-0x90, 0x0F, 0x00, 0x02, 0x00, 0x00, 0xFA, 0x01, 0x0F, 0x30, 0x00, 0x60, 0x0F, 0x01, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x08, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x90, 0x06, 0xFF, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x00, 0x06, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x02, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x90, 0x10, 0x00, 0x01, 0x00, 0x00, 0xFA, 0x0F, 0x10, 0xA8, 0x00, 
-0x60, 0x10, 0x0F, 0x1E, 0x09, 0x00, 
-0x60, 0x04, 0x10, 0x67, 0x04, 0x01, 0x1E, 0x10, 0x04, 0x1E, 0x0B, 0x04, 
-0x6A, 0x0F, 0x10, 0x6E, 0x00, 0x10, 
-0x6A, 0x01, 0x10, 0xFC, 0x0F, 0x11, 
-0x9A, 0x00, 0x6C, 0x0C, 
-0x90, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xFC, 0x0C, 0x0D, 0x00, 0x01, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 0xFC, 0x01, 0x11, 0x22, 0x00, 0x5A, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-]
-
-
-ReadProgmem_UPDI = [    # len = 0x69 (132)
-0x91, 0x00, 
-0x91, 0x01, 
-0x95, 0x90, 0x11, 0x00, 0x00, 0x00, 0x00, 
-0x90, 0x0F, 0x40, 0x00, 0x00, 0x00, 
-0xFA, 0x01, 0x0F, 0x19, 0x00, 
-0x60, 0x0F, 0x01, 
-0x90, 0x10, 0x00, 0x01, 0x00, 0x00, 
-0xFA, 0x0F, 0x10, 0x27, 0x00, 
-0x60, 0x10, 0x0F, 
-0x1E, 0x09, 0x00, 0x60, 0x04, 0x10, 
-0x67, 0x04, 0x01, 
-0x1E, 0x10, 0x04, 
-0x1E, 0x0D, 0x04, 
-0x6A, 0x0F, 0x10, 
-0x6E, 0x00, 0x10, 
-0x6A, 0x01, 0x10, 
-0xFC, 0x0F, 0x11, 0x19, 0x00, 
-0xFC, 0x01, 0x11, 0x0B, 0x00 ] 
-
-
-WriteDataEEmem_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 
-0x60, 0x03, 0x01, 
-0x93, 0x03, 0x01, 0x00, 0xAD, 0x03, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x13, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 0x1E, 0x09, 0x00, 
-0x9C, 0x04, 0x01, 0x00, 0x1E, 0x10, 0x04, 0x1E, 0x0A, 0x04, 0x6C, 0x0C, 
-0x90, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xFC, 0x0C, 0x0D, 0x7F, 0x00, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 0xAE, 0x5A, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-]
-
-
-ReadDataEEmem_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 0x60, 0x03, 0x01, 
-0x93, 0x03, 0x01, 0x00, 
-0x95, 0xAD, 0x03, 0x1E, 0x09, 0x00, 
-0x9C, 0x04, 0x01, 0x00, 0x1E, 0x10, 0x04, 0x1E, 0x0C, 0x04, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 0xAE, 0x5A, 
-]
-
-
-WriteConfigmem_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 0xAD, 0x01, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x13, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x99, 0x03, 0x1E, 0x06, 0x00, 0x03, 0x6C, 0x0C, 
-0x90, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xFC, 0x0C, 0x0D, 0x70, 0x00, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 0xAE, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-]
-
-
-ReadConfigmem_UPDI = [      # len 0x33
-0x91, 0x00, 
-0x91, 0x01, 
-0x95, 0xAD, 0x01, 0x1E, 0x03, 0x00, 0x9F, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 
-0xAE, 0x5A
-]
-# ConfigMemFuse & ConfigMemLock are the same byte script, so I removed them
-# Actually it is the same as ReadMem8
-
-
-WriteIDmem_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 
-0x60, 0x03, 0x01, 
-0x93, 0x03, 0x20, 0x00, 0xAD, 0x03, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x08, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x90, 0x06, 0xFF, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x00, 0x06, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x02, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 0x1E, 0x09, 0x00, 
-0x9C, 0x04, 0x20, 0x00, 0x1E, 0x10, 0x04, 0x1E, 0x0A, 0x04, 0x6C, 0x0C, 
-0x90, 0x0D, 0x00, 0x00, 0x00, 0x00, 0xFC, 0x0C, 0x0D, 0xD9, 0x00, 
-0x90, 0x02, 0x02, 0x10, 0x00, 0x00, 0xA2, 0x1E, 0x03, 0x02, 
-0x94, 0x02, 0x00, 0xA5, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 
-0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07, 
-0x92, 0x00, 0x20, 0x00, 0x00, 0x00, 
-0xAE, 0x5A, 0x90, 0x06, 0x00, 0x10, 0x00, 0x00, 
-0x90, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x06, 0x06, 0x07
-]
-
-
-ReadIDmem_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 
-0x60, 0x03, 0x01, 
-0x93, 0x03, 0x01, 0x00, 0x95, 0xAD, 0x03, 
-0x1E, 0x09, 0x00, 
-0x9C, 0x04, 0x01, 0x00, 
-0x1E, 0x10, 0x04, 0x1E, 0x0C, 0x04, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 0xAE, 0x5A
-]
-
-
-WriteCSreg_UPDI_cmd = 0x00000215
-WriteCSreg_UPDI = [
-0x99, 0x00, 
-0x99, 0x01, 0x1E, 0x0F, 0x00, 0x01
-]
-
-
-ReadCSreg_UPDI_cmd = 0x00000215
-ReadCSreg_UPDI = [
-0x99, 0x00, 0x1E, 0x0E, 0x00, 0x9F
-]
-
-
-WriteMem8_UPDI_cmd = 0x00000215
-WriteMem8_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 
-0xAD, 0x01, 0x99, 0x03, 0x1E, 0x06, 0x00, 0x03, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 0xAE, 0x5A, 
-]
-
-
-WriteMem16_UPDI_cmd = 0x00000215
-WriteMem16_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 0x67, 0x01, 0x01, 
-0xAD, 0x01, 0x9A, 0x03, 0x1E, 0x07, 0x00, 0x03, 
-0x92, 0x00, 0x02, 0x00, 0x00, 0x00, 0xAE, 0x5A 
-]
-
-
-ReadMem8_UPDI_cmd = 0x00000215
-ReadMem8_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 0x95, 
-0xAD, 0x01, 0x1E, 0x03, 0x00, 0x9F, 
-0x92, 0x00, 0x01, 0x00, 0x00, 0x00, 
-0xAE, 0x5A
-]
-
-
-ReadMem16_UPDI_cmd = 0x00000215
-ReadMem16_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 0x95, 0x67, 0x01, 0x01, 
-0xAD, 0x01, 0x1E, 0x04, 0x00, 0x9D, 
-0x92, 0x00, 0x02, 0x00, 0x00, 0x00, 0xAE, 0x5A, 
-]
-
-
-# System information Block
-ReadSIB_UPDI_cmd = 0x00000215
-ReadSIB_UPDI = [
-0x95, 0x9B, 0x00, 0x02, 0x1E, 0x12, 0x00
-]
-
-
-EnterDebugMode_UPDI_cmd = 0x00000215
-EnterDebugMode_UPDI = [ # len = 0x6C (135)
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x00, 0x1E, 0x01, 0x00, 0x01, # 0x9B 0x01 [0x00] - only difference between differen Debug Modes
-0x94, 0xC8, 0x00, 
-0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 
-0x6C, 0x01, 0x66, 0x01, 0x01, 0x00, 0x00, 0x00, 
-0xFE, 0x01, 0x01, 0x00, 0x00, 0x00, 0x4B, 0x00, 
-0x9B, 0x01, 0x00, 
-0x65, 0x20, 0x20, 0x20, 0x20, 0x04, # 0x20202020  UPDI Debug Key
-0x65, 0x20, 0x44, 0x43, 0x4F, 0x04, # 0x2044434F ==> "OCD     " (yes, with spaces)
-0x1E, 0x11, 0x01, 
-0x9B, 0x02, 0x07, 0x1E, 0x0E, 0x02, 0x6C, 0x03, 
-0x66, 0x03, 0x02, 0x00, 0x00, 0x00, 
-0xFE, 0x03, 0x02, 0x00, 0x00, 0x00, 0x53, 0x00, 
-0x90, 0x01, 0x00, 0x01, 0x00, 0x00, 0x7F, 0x01, 0x5A
-]
-
-
-
-
-ExitDebugMode_UPDI_cmd = 0x00000215
-ExitDebugMode_UPDI = [
-     0x1E, 0x02 
-     ]
-
-#The same on each chip
-Run_UPDI = [        # len = 0x54 (111)
-0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 0x1E, 0x0E, 0x00, 
-0x6C, 0x02, 0x66, 0x02, 0x20, 0x00, 0x00, 0x00, 
-0xFE, 0x02, 0x20, 0x00, 0x00, 0x00, # ] == UPDI Preamble?
-0x33, 0x00, 0x90, 0x00, 0x88, 0x0F, 0x00, 0x00, 
-0x9B, 0x01, 0x02, 0x1E, 0x06, 0x00, 0x01, 
-0x9B, 0x00, 0x04, 
-0x9B, 0x01, 0x02, 0x1E, 0x0F, 0x00, 0x01, 
-0xFB, 0x3B, 0x00, # 0xFB == Delimiter, 0x003B == Length?, LE
-0x90, 0x01, 0x00, 0x01, 0x00, 0x00, 
-0x7F, 0x01, 0x5A ] 
-
-#The same on each chip
-Halt_UPDI = [
-0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 0x1E, 0x0E, 0x00, 
-0x6C, 0x02, 0x66, 0x02, 0x20, 0x00, 0x00, 0x00, 
-0xFE, 0x02, 0x20, 0x00, 0x00, 0x00, 
-0x38, 0x00, 0x9B, 0x00, 0x04, 
-0x9B, 0x01, 0x01, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x00, 0x05, 0xA2, 0x1E, 0x0E, 0x00, 
-0xA5, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x64, 0x00, 
-0xFB, 0x40, 0x00, 0x90, 0x01, 0x00, 0x01, 0x00, 0x00, 
-0x7F, 0x01, 0x5A ]
-
-
-#seems to be the same, need to check 128K
-GetPC_UPDI_cmd = 0x8000140E
-GetPC_UPDI = [      # len = 0x3D (88)
-0x90, 0x00, 0x94, 0x0F, 0x00, 0x00, 
-0x1E, 0x04, 0x00, 
-0x6C, 0x01, 
-0x1E, 0x15, 0x02, 0x03, 0x90, 0x04, 0x00, 0x00, 0x00, 0x00, # == UPDI PC Command
-0xFC, 0x03, 0x04, 0x1D, 0x00, 
-0x67, 0x01, 0x01, 
-0x69, 0x01, 0x01, 0x00, 0x00, 0x00, 
-0x98, 0x01 ]
-
-
-SetPC_UPDI_cmd = 0x00000215
-SetPC_UPDI = [      # len 0x71 (140)
-0x91, 0x00, 
-0x1E, 0x15, 0x02, 0x03, 0x90, 0x04, 0x00, 0x00, 0x00, 0x00, # == UPDI PC Command
-0xFC, 0x03, 0x04, 0x14, 0x00, 0x68, 0x00, 0x01, 
-0x90, 0x01, 0x94, 0x0F, 0x00, 0x00, 0x1E, 0x07, 0x01, 0x00, 
-0x90, 0x02, 0x90, 0x0F, 0x00, 0x00, 
-0x9C, 0x03, 0x00, 0x00, 0x1E, 0x07, 0x02, 0x03, 
-0x90, 0x00, 0x88, 0x0F, 0x00, 0x00, 
-0x9B, 0x01, 0x04, 0x1E, 0x06, 0x00, 0x01, 
-0x9B, 0x00, 0x04, 
-0x9B, 0x01, 0x02, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x00, 0x05, 0xA2, 0x1E, 0x0E, 0x00, 
-0xA5, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 
-0x0A, 0x00 ]
-
-
-
-DebugReset_UPDI_cmd = 0x00000215
-DebugReset_UPDI = [ # len = 0x53 (110)
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x59, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x01, 0x0B, 0xA2, 0x1E, 0x0E, 0x01, 
-0xA5, 0x20, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x0A, 0x00, 
-0x9B, 0x00, 0x08, 
-0x9B, 0x01, 0x00, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x01, 0x0B, 0xA2, 0x1E, 0x0E, 0x01, 
-0xA5, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 
-0x94, 0x40, 0x00]
-
-
-GetHaltStatus_UPDI_cmd = 0x00000215
-GetHaltStatus_UPDI = [  #len 0x45 (96)
-0x90, 0x00, 0x05, 0x00, 0x00, 0x00, 0x1E, 0x0E, 0x00, 
-0x6C, 0x01, 0x66, 0x01, 0x01, 0x00, 0x00, 0x00, 
-0xFE, 0x01, 0x01, 0x00, 0x00, 0x00, 0x24, 0x00, 
-0x90, 0x02, 0x55, 0x55, 0x55, 0x55, 0x98, 0x02, 
-0xFB, 0x2C, 0x00, 0x90, 0x02, 0xAA, 0xAA, 0xAA, 0xAA, 
-0x98, 0x02, 0x5A ]
-
-
-SingleStep_UPDI_cmd = 0x00000215
-SingleStep_UPDI = [     # len 0x65 (128)
-0x9B, 0x00, 0x0B, 0x1E, 0x0E, 0x00, 0x1E, 0x0E, 0x00, 
-0x6C, 0x02, 0x66, 0x02, 0x20, 0x00, 0x00, 0x00, 
-0xFE, 0x02, 0x20, 0x00, 0x00, 0x00, 0x45, 0x00, 
-0x90, 0x00, 0x88, 0x0F, 0x00, 0x00, 
-0x9B, 0x01, 0x04, 0x1E, 0x06, 0x00, 0x01, 
-0x9B, 0x00, 0x04, 
-0x9B, 0x01, 0x02, 0x1E, 0x0F, 0x00, 0x01, 
-0x9B, 0x00, 0x05, 0xA2, 0x1E, 0x0E, 0x00, 
-0xA5, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x32, 0x00, 
-0xFB, 0x4D, 0x00, 
-0x90, 0x01, 0x00, 0x01, 0x00, 0x00,
-0x7F, 0x01 ]
-
-SetHWBP_UPDI_cmd = 0x00000215
-SetHWBP_UPDI = [
-0x91, 0x00, 
-0x91, 0x01, 
-0x90, 0x05, 0x01, 0x00, 0x00, 0x00, 
-0xFA, 0x00, 0x05, 
-0x9C, 0x00, 0x68, 0x01, 0x01, 
-0x66, 0x01, 0xFE, 0xFF, 0xFF, 0xFF, 0x1E, 0x15, 0x02, 0x03, 
-0xFE, 0x03, 0x00, 0x00, 0x00, 0x00, 0x2F, 0x00, 
-0xFE, 0x03, 0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0xFB, 
-0x9C, 0x00, 0x61, 0x01, 0x01, 0x00, 0x00, 0x00, 0xFB, 0x6B, 0x00, 
-0x90, 0x05, 0x89, 0x0F, 0x00, 0x00, 0x1E, 0x03, 0x05, 
-0x6C, 0x06, 0x60, 0x07, 0x00, 
-0x92, 0x07, 0x01, 0x00, 0x00, 0x00, 0xFE, 0x01, 0x00, 0x00, 0x00, 0x00, 0x5E, 0x00, 
-0x7C, 0x06, 0x07, 0x1E, 0x06, 0x05, 0x06, 0xFB, 0x6B, 0x00, 
-0x6F, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 
-0x7D, 0x06, 0x07, 0x1E, 0x06, 0x05, 0x06, 
-0x90, 0x05, 0x80, 0x0F, 0x00, 0x00, 0x68, 0x00, 0x02, 
-0x6E, 0x05, 0x00, 0x1E, 0x07, 0x05, 0x01, 
-0x90, 0x06, 0x00, 0x80, 0x00, 0x00, 
-0x90, 0x07, 0x01, 0x00, 0x01, 0x00, 
-0xF9, 0x06, 0x07, 0x9C, 0x00, 0x92, 0x05, 0x02, 0x00, 0x00, 0x00, 0x60, 0x06, 0x01, 
-0x67, 0x06, 0x10, 0x1E, 0x07, 0x05, 0x06, 0x5A ]
-
-
-ClearHWBP_UPDI_cmd = 0x00000215
-ClearHWBP_UPDI = [
-0x91, 0x00, 
-0x90, 0x01, 0x00, 0x00, 0x00, 0x00, 
-0x90, 0x05, 0x01, 0x00, 0x00, 0x00, 
-0xFA, 0x00, 0x05, 
-0x88, 0x00, 0x68, 0x01, 0x01, 
-0x66, 0x01, 0xFE, 0xFF, 0xFF, 0xFF, 0x1E, 0x15, 0x02, 0x03, 
-0xFE, 0x03, 0x00, 0x00, 0x00, 0x00, 0x33, 0x00, 
-0xFE, 0x03, 0x01, 0x00, 0x00, 0x00, 0x36, 0x00, 0xFB, 
-0x88, 0x00, 0xFB, 0x57, 0x00, 
-0x90, 0x05, 0x89, 0x0F, 0x00, 0x00, 0x1E, 0x03, 0x05, 0x6C, 0x06, 
-0x60, 0x07, 0x00, 0x92, 0x07, 0x01, 0x00, 0x00, 0x00, 
-0x6F, 0x07, 0xFF, 0xFF, 0xFF, 0xFF, 0x7D, 0x06, 0x07, 0x1E, 0x06, 0x05, 0x06, 
-0x90, 0x05, 0x80, 0x0F, 0x00, 0x00, 0x68, 0x00, 0x02, 
-0x6E, 0x05, 0x00, 0x1E, 0x07, 0x05, 0x01, 
-0x90, 0x06, 0x00, 0x80, 0x00, 0x00, 
-0x90, 0x07, 0x01, 0x00, 0x01, 0x00, 0xF9, 0x06, 0x07, 
-0x88, 0x00, 0x92, 0x05, 0x02, 0x00, 0x00, 0x00, 0x60, 0x06, 0x01, 
-0x67, 0x06, 0x10, 0x1E, 0x07, 0x05, 0x06, 0x5A ]
+class target():
+    def __init__(self, dev_id, flash_size, page_size, ram_start, ram_size, dev_name):
+        self.dev_id = dev_id
+        self.flash_size = flash_size
+        self.page_size = page_size
+        self.ram_start = ram_start
+        self.ram_size = ram_size
+        self.dev_name = dev_name
+
+
+target_lut = {
+#     DeviceID[0:2] | Flash | Page | RAM Off | RAM Len | Target Name
+    target (0x1E9120,   2048,    64,   0x3F80,      128, "ATtiny214"),
+    target (0x1E9121,   2048,    64,   0x3F80,      128, "ATtiny212"),
+    target (0x1E9122,   2048,    64,   0x3F80,      128, "ATtiny204"),
+    target (0x1E9123,   2048,    64,   0x3F80,      128, "ATtiny202"),
+    target (0x1E9220,   4096,    64,   0x3F00,      256, "ATtiny417"),
+    target (0x1E9221,   4096,    64,   0x3F00,      256, "ATtiny416"),
+    target (0x1E9222,   4096,    64,   0x3F00,      256, "ATtiny414"),
+    target (0x1E9223,   4096,    64,   0x3F00,      256, "ATtiny412"),
+    target (0x1E9225,   4096,    64,   0x3F00,      256, "ATtiny406"),
+    target (0x1E9226,   4096,    64,   0x3F00,      256, "ATtiny404"),
+    target (0x1E9227,   4096,    64,   0x3F00,      256, "ATtiny402"),
+    target (0x1E922A,   4096,    64,   0x3E00,      512, "ATtiny427"),
+    target (0x1E922B,   4096,    64,   0x3E00,      512, "ATtiny426"),
+    target (0x1E922C,   4096,    64,   0x3E00,      512, "ATtiny424"),
+    target (0x1E9320,   8192,    64,   0x3E00,      512, "ATtiny817"),
+    target (0x1E9321,   8192,    64,   0x3E00,      512, "ATtiny816"),
+    target (0x1E9322,   8192,    64,   0x3E00,      512, "ATtiny814"),
+    target (0x1E9323,   8192,    64,   0x3E00,      512, "ATtiny807"),
+    target (0x1E9324,   8192,    64,   0x3E00,      512, "ATtiny806"),
+    target (0x1E9325,   8192,    64,   0x3E00,      512, "ATtiny804"),
+    target (0x1E9326,   8192,    64,   0x3C00,     1024, "ATmega808"),
+    target (0x1E9327,   8192,    64,   0x3C00,     1024, "ATtiny827"),
+    target (0x1E9328,   8192,    64,   0x3C00,     1024, "ATtiny826"),
+    target (0x1E9329,   8192,    64,   0x3C00,     1024, "ATtiny824"),
+    target (0x1E932A,   8192,    64,   0x3C00,     1024, "ATmega809"),
+    target (0x1E932C,   8192,    64,   0x7800,     2048, "AVR8EA28"),
+    target (0x1E9420,  16384,    64,   0x3800,     2048, "ATtiny1617"),
+    target (0x1E9421,  16384,    64,   0x3800,     2048, "ATtiny1616"),
+    target (0x1E9422,  16384,    64,   0x3800,     2048, "ATtiny1614"),
+    target (0x1E9423,  16384,    64,   0x3C00,     1024, "ATtiny1607"),
+    target (0x1E9424,  16384,    64,   0x3C00,     1024, "ATtiny1606"),
+    target (0x1E9425,  16384,    64,   0x3C00,     1024, "ATtiny1604"),
+    target (0x1E9426,  16384,    64,   0x3800,     2048, "ATmega1609"),
+    target (0x1E9427,  16384,    64,   0x3800,     2048, "ATmega1608"),
+    target (0x1E9428,  16384,    64,   0x3800,     2048, "ATtiny1627"),
+    target (0x1E9429,  16384,    64,   0x3800,     2048, "ATtiny1626"),
+    target (0x1E942A,  16384,    64,   0x3800,     2048, "ATtiny1624"),
+    target (0x1E9431,  16384,   512,   0x7800,     2048, "AVR16DD32"),
+    target (0x1E9432,  16384,   512,   0x7800,     2048, "AVR16DD28"),
+    target (0x1E9433,  16384,   512,   0x7800,     2048, "AVR16DD20"),
+    target (0x1E9434,  16384,   512,   0x7800,     2048, "AVR16DD14"),
+    target (0x1E9435,  16384,    64,   0x7800,     2048, "AVR16EA48"),
+    target (0x1E9436,  16384,    64,   0x7800,     2048, "AVR16EA32"),
+    target (0x1E9449,  16384,    64,   0x7800,     2048, "AVR16EB14"),
+    target (0x1E9521,  32768,   128,   0x3800,     2048, "ATtiny3216"),
+    target (0x1E9526,  32768,   128,   0x3400,     3072, "ATtiny3227"),
+    target (0x1E9527,  32768,   128,   0x3400,     3072, "ATtiny3226"),
+    target (0x1E9528,  32768,   128,   0x3400,     3072, "ATtiny3224"),
+    target (0x1E9530,  32768,   128,   0x3000,     4096, "ATmega3208"),
+    target (0x1E9531,  32768,   128,   0x3000,     4096, "ATmega3209"),
+    target (0x1E9532,  32768,   512,   0x7000,     4096, "AVR32DA48"),
+    target (0x1E9533,  32768,   512,   0x7000,     4096, "AVR32DA32"),
+    target (0x1E9534,  32768,   512,   0x7000,     4096, "AVR32DA28"),
+    target (0x1E9535,  32768,   512,   0x7000,     4096, "AVR32DB48"),
+    target (0x1E9536,  32768,   512,   0x7000,     4096, "AVR32DB32"),
+    target (0x1E9537,  32768,   512,   0x7000,     4096, "AVR32DB28"),
+    target (0x1E9538,  32768,   512,   0x7000,     4096, "AVR32DD32"),
+    target (0x1E9539,  32768,   512,   0x7000,     4096, "AVR32DD28"),
+    target (0x1E953A,  32768,   512,   0x7000,     4096, "AVR32DD20"),
+    target (0x1E953B,  32768,   512,   0x7000,     4096, "AVR32DD14"),
+    target (0x1E953C,  32768,    64,   0x7000,     4096, "AVR32EA48"),
+    target (0x1E953D,  32768,    64,   0x7000,     4096, "AVR32EA32"),
+    target (0x1E953E,  32768,    64,   0x7000,     4096, "AVR32EA28"),
+    target (0x1E9612,  65536,   512,   0x6000,     8192, "AVR64DA64"),
+    target (0x1E9613,  65536,   512,   0x6000,     8192, "AVR64DA48"),
+    target (0x1E9614,  65536,   512,   0x6000,     8192, "AVR64DA32"),
+    target (0x1E9615,  65536,   512,   0x6000,     8192, "AVR64DA28"),
+    target (0x1E9616,  65536,   512,   0x6000,     8192, "AVR64DB64"),
+    target (0x1E9617,  65536,   512,   0x6000,     8192, "AVR64DB48"),
+    target (0x1E9618,  65536,   512,   0x6000,     8192, "AVR64DB32"),
+    target (0x1E9619,  65536,   512,   0x6000,     8192, "AVR64DB28"),
+    target (0x1E961A,  65536,   512,   0x6000,     8192, "AVR64DD32"),
+    target (0x1E961B,  65536,   512,   0x6000,     8192, "AVR64DD28"),
+    target (0x1E961C,  65536,   512,   0x6000,     8192, "AVR64DD20"),
+    target (0x1E961D,  65536,   512,   0x6000,     8192, "AVR64DD14"),
+    target (0x1E961E,  65536,   128,   0x6800,     6144, "AVR64EA48"),
+    target (0x1E961F,  65536,   128,   0x6800,     6144, "AVR64EA32"),
+    target (0x1E9620,  65536,   128,   0x6800,     6144, "AVR64EA28"),
+    target (0x1E9650,  49152,   128,   0x2800,     6144, "ATmega4808"),
+    target (0x1E9651,  49152,   128,   0x2800,     6144, "ATmega4809"),
+    target (0x1E9707, 131072,   512,   0x4000,    16384, "AVR128DA64"),
+    target (0x1E9708, 131072,   512,   0x4000,    16384, "AVR128DA48"),
+    target (0x1E9709, 131072,   512,   0x4000,    16384, "AVR128DA32"),
+    target (0x1E970A, 131072,   512,   0x4000,    16384, "AVR128DA28"),
+    target (0x1E970B, 131072,   512,   0x4000,    16384, "AVR128DB64"),
+    target (0x1E970C, 131072,   512,   0x4000,    16384, "AVR128DB48"),
+    target (0x1E970D, 131072,   512,   0x4000,    16384, "AVR128DB32"),
+    target (0x1E970E, 131072,   512,   0x4000,    16384, "AVR128DB28"),
+}
 
 
 register_lut = [
@@ -531,7 +142,7 @@ register_lut = [
 # Pseudo Reg? Not quite sure what avr-gdb needs that one for
 #   [ "pc",    35,      32,  "higher", "general",   "uint8",    None,       None],
 
-# I wish I could add these, but GDP does not allow that. 
+# I wish I could add these, but GDB does not allow that. 
 # Pseudo Regs for easier readability
 #   [ "rX",    32,      16, "pointer",  "system", "data_ptr",   None,       None],
 #   [ "rY",    33,      16, "pointer",  "system", "data_ptr",   None,       None],
@@ -539,24 +150,36 @@ register_lut = [
 ]
 
 
-device_lut = {  
-#   ID [0:2]      Flash Len RAM Start  RAM Len   Pins      Arch   Device name
-    0x1E9431   : (  0x8000,    0x7800,   0x800,   32, "avr:103", "AVR16DD32"),
-    0x1E9432   : (  0x8000,    0x7800,   0x800,   28, "avr:103", "AVR16DD28"),
 
-    0x1E9538   : (  0x8000,    0x7000,  0x1000,   32, "avr:103", "AVR32DD32"),
-    0x1E9539   : (  0x8000,    0x7000,  0x1000,   28, "avr:103", "AVR32DD28"),
+import threading
+import libusb_package
+import usb.util, usb.core
+from time import sleep
+from xml.etree import ElementTree as ET
+from enum import Enum
 
-    0x1E961A   : ( 0x10000,    0x6000,  0x2000,   32, "avr:103", "AVR64DD32"),
-    0x1E961B   : ( 0x10000,    0x6000,  0x2000,   28, "avr:103", "AVR64DD28"),
-}
-devlut_flash_len = 0
-devlut_ram_start = 1
-devlut_ram_len   = 2
-devlut_pin_count = 3
-devlut_arch      = 4
-devlut_devname   = 5
+import scripts_dict as scr_dict
 
+
+class UnknownPart(Exception):
+    # Raised when a part name can not be found in the target_lut
+    pass
+
+class UnknownScript(Exception):
+    # Raised when there is no correspnding script set to talk to the target
+    pass
+
+class ErrorXML(Exception):
+    # Raised when we failed to generte an XML File
+    pass
+
+class NoDebugger(Exception):
+    # Raised when no debugger was found in the USB devices
+    pass
+
+class CommunicationFailure(Exception):
+    # Raised whenever we don't get a response from a debugger
+    pass
 
 def get_uint32_from_buf(buf:bytearray, pos:int, endian = "little"):
     retval = 0
@@ -582,15 +205,8 @@ def uint32_to_buf(num:int):
     return buffer
 
 
-import threading
-import queue
-import libusb_package
-import usb.util
-from time import sleep
-from xml.etree import ElementTree as ET
-from enum import Enum
 
-probeMode = Enum("probeMode", ["OFF", "PROG", "DEBUG"])
+probeMode = Enum("probeMode", ["OFF", "PROG", "DEBUG", "TO_Write", "TO_Read"])
 targetState = Enum("targetState", ["OFF", "HALT", "RUN", "ERASED"])
 
 class pk_debugger(threading.Thread):
@@ -598,21 +214,34 @@ class pk_debugger(threading.Thread):
     script_upload_type = 0x80000102
     script_download_type = 0x0C0000101
 
-    def __init__(self, voltage:int):
-        self._voltage = 0
-        if ((voltage in range (1800, 5100)) and (voltage != 0)):
+    def __init__(self, part:str, voltage:int, baud:int):
+        if ((voltage in range (1800, 5500)) and (voltage != 0) and (voltage != None)):
             self._voltage = voltage
         else:
-            print("Voltage request out of range, Disabling Powering the device")
+            self._voltage = 0
         
-        self._updi_speed = 200
+        if((baud != None) and (baud in range(10, 900))): 
+            self._updi_speed = baud
+        else:
+            self._updi_speed = 200
+        
+        self.part = part.upper()
+        self._devID = 0x00
+        self._revision = 0x00
+        self._target:target = None
 
-        self._icd:usb.core.Device = None
-        self.vid_pk4 =  0x03EB
-        self.pid_pk4 = (0x2177, 0x2178, 0x2179, 0x217A)
-        self.vid_pk5 =  0x04D8
-        self.pid_pk5 = (0x9036,0x9035)
-        self._icd = self.find_icd()
+        # scripts
+        self.scripts = dict()
+        self.sib = ""
+        self.nvm_version = ""
+
+        # USB
+        self._vid =  0x04D8
+        self._pid = (0x9036, 0x9012)
+        self._icd = None
+        self._apVersion = ""
+        self._serialNum = ""
+
 
         # EP Numbers, same for PK4 and PK5
         self._cmd_read_ep   = 0x81      # 129 == EP IN  1
@@ -630,12 +259,10 @@ class pk_debugger(threading.Thread):
         self.VddCurrentSense = 0
         self.VddVoltageSense = 0
 
+
         # memory map: [Name:str,   from:int,   to:int]
         self._target_xml = ""
         self._memory_map_xml = ""
-        self._devID = 0x00
-        self._revision = 0x00
-        self._device_info = None
 
         self._target_regs = bytearray(32)
         self._target_sp = 0
@@ -644,29 +271,57 @@ class pk_debugger(threading.Thread):
         self._target_attached = False
         self._target_halt_status = 0x00
         self.target_flash_erased = 0
-        self._new_program = []
+        self._new_program = bytearray(0x1FFFF)  # 128k parts
         self._program_tail = 0
 
         self._probeMode = probeMode.OFF
         self._probePowered = False  # True if Voltage supplied by debugger
+
         #EOF
+    
+    def init_debugger(self):
+        if self.find_icd() == None:
+            raise NoDebugger()
+        if self._set_cpu(self.part) != 0:
+            raise UnknownPart()
+        if self._set_dev_info(self.part) != 0:
+            raise UnknownScript()
+        if self._create_target_xml() != 0:
+            raise ErrorXML()
+        if self._create_mem_map_xml() != 0:
+            raise ErrorXML()
+        
+
+    def check_connection(self):
+        if self.get_Firmware_Info() != 0:
+            raise CommunicationFailure
+
+
+
+    def _set_dev_info(self, part_name:str):
+        part_name = part_name.upper()
+        for dev in target_lut:
+            if (part_name == dev.dev_name):
+                self._target = dev
+                return 0
+        return -1
 
     def _create_target_xml(self):
         if (self._target_xml != ""):    # create once only
-            return
-        
-        if (self._devID == 0x00) and (self._probeMode != probeMode.OFF):
-            self.get_Target_Id()    # Try to get the device info if not happend already
+            return -1
 
-        if (self._device_info is None):
-            return
+        if (self._target is None):
+            return -1
 
         xml_header = b"""<?xml version="1.0"?><!DOCTYPE target SYSTEM "gdb-target.dtd">"""
         tree_root = ET.Element("target")
-        tree_arch = ET.SubElement(tree_root, "architecture")
-        tree_arch.text = self._device_info[devlut_arch]
-        tree_comp = ET.SubElement(tree_root, "compatible")
-        tree_comp.text = "avr"
+        avr_arch = "avr:103"
+        if self._target.flash_size == 65536:
+            avr_arch = "avr:102"
+        if self._target.flash_size == 131072:
+            avr_arch = "avr:104"
+        tree_arch = ET.SubElement(tree_root, "architecture").text = avr_arch
+        tree_comp = ET.SubElement(tree_root, "compatible").text = "avr"
         tree_feat = ET.SubElement(tree_root, "feature", name="org.gnu.avr8.profile") # Placeholder profile name
 
         for reg in register_lut:
@@ -674,69 +329,79 @@ class pk_debugger(threading.Thread):
         
         print("INFO: Generated target.xml")
         self._target_xml = xml_header + ET.tostring(tree_root)
+        return 0
         #EOF
 
-
-
     def _create_mem_map_xml(self):
-        # This doesn't work, GDB quits. :/
         if (self._memory_map_xml != ""):    # Generate only once
-            return
+            return -1
 
-        if (self._device_info == None):     # we need to know our device first
-            return
+        if (self._target == None):     # we need to know our target first
+            return -1
         
         xml_header = b"""<?xml version="1.0"?><!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">"""
         
         tree_root = ET.Element("memory-map")
-        ram_start_hex = "80{0:04x}".format(self._device_info[devlut_ram_start])
-        ram_length_hex = "{0:x}".format(self._device_info[devlut_ram_len])
+        ram_start_hex = "80{0:04x}".format(self._target.ram_start)     # GDB expects RAM to start at 0x80 0000
+        ram_length_hex = "{0:x}".format(self._target.ram_size)
         ET.SubElement(tree_root, "memory", type="ram", start=ram_start_hex, length=ram_length_hex)
 
 
-        flash_length_hex = "{0:x}".format(self._device_info[devlut_flash_len])
+        flash_length_hex = "{0:x}".format(self._target.flash_size)      # Flash starts at 0x00, the opposite compared to AVR debugging
         flash_map = ET.SubElement(tree_root, "memory", type="flash", start="00", length=flash_length_hex)
-        blocksize = ET.SubElement(flash_map, "property", name="blocksize")
-        # UPDI can only do chip erase.
-        # It is possible to erase only a page, but ugh
-        blocksize.text = flash_length_hex     
+        blocksize = ET.SubElement(flash_map, "property", name="blocksize").text = "{0:x}".format(self._target.page_size)
         
         
         print("INFO: Generated memory_map.xml")
         self._memory_map_xml = xml_header + ET.tostring(tree_root)
+        return 0
         #EOF
-
+    
+    def _set_cpu(self, cpu:str):
+        cpu_str = cpu.upper()
+        if cpu_str in scr_dict.scripts:
+            self.scripts = scr_dict.scripts[cpu_str]
+            print("Scripts for {0} found.".format(cpu_str))
+            return 0
+        else:
+            print("Scripts for {0} not found. Allowed names are:".format(cpu_str))
+            for x in scr_dict.scripts:
+                print(x)
+            return -1
     
     def find_icd(self):
         if self._icd is not None:
             return self._icd
         
         devices = list(libusb_package.find(find_all=1))
-        print(f'Found {len(devices)} USB-Devices in the system')
+        #print(f'Found {len(devices)} USB-Devices in the system')
 
         icd = None
-        for p in self.pid_pk5:
-            icd = libusb_package.find(idVendor=self.vid_pk5, idProduct=p)
+        for pid in self._pid:
+            icd = libusb_package.find(idVendor=self._vid, idProduct=pid)
             if icd is not None:
-                print("PK5 found")
                 self._icd = icd
                 return icd
 
-        print("No PK5 found by VID/PID, trying to find PK4 next")
-        for p in self.pid_pk4:
-            icd = libusb_package.find(idVendor=self.vid_pk4, idProduct=p)
-            if icd is not None:
-                print("PK4 found")
-                self._icd = icd
-                return icd
+        #print("No Debugger found by VID/PID")
         
-        print("No PK4 found by VID/PID, Check connections and try again")
         return None
         #EOF        
 
-     
-    # 0x5E = enabledPTG, +(uint32_t)ProgrammerToGoMode
-    # ->runScriptWithUpload -> doUpload -> readTransfer
+    
+    def software_reset(self):
+        self.run_Script(self.script_cmd_type, bytearray(0), [0xE7], 0)
+        self.read_response("Software Reset")
+
+
+    def recover_script(self):
+        recover_cmd = 0x0107
+        transfer = self.create_msg_header(recover_cmd, 16, 0x00)
+        self._icd.write(self._cmd_write_ep, transfer)
+        
+        self.read_response("recover script")
+
+
     def set_PTG_mode(self, enabled:int):
         ptg_mode_array = [0x5E, bool(enabled), 0x00, 0x00, 0x00]
         response_length = 4
@@ -751,18 +416,16 @@ class pk_debugger(threading.Thread):
         self._icd.write(self._cmd_write_ep, [0xE1])
         ret = self._icd.read(self._cmd_read_ep, 1024, 25)
         if (ret[0] != 0xE1):
-            raise ValueError('Wrong Device Response On "Get Firmware Info". Repose: \n' + ret)
+            print('ERROR: Wrong Device Response On "Get Firmware Info". Repose: \n' + ret)
+            return -1
 
-        apVersion = "apVer: {0:02X}.{1:02X}.{2:02X}, ".format(ret[3],ret[4],ret[5])
-        deviceID = "devId: {0:02X}{1:02X}{2:02X}{3:02X}, ".format(ret[21], ret[20], ret[19], ret[18])
+        self._apVersion = "apVer: {0:02X}.{1:02X}.{2:02X}, ".format(ret[3],ret[4],ret[5])
 
-        # This typecasting took way too long to figure out....
-        # Look what they need to mimick the power of C (printf("%s", &ret[32]))
-        SerialNum = "serialNumber: "
+        self._serialNum = "serialNumber: "
         for x in range(32, 50):
-            SerialNum += chr(ret[x])
+            self._serialNum += chr(ret[x])
 
-        print(apVersion + deviceID + SerialNum)
+        return 0
         #EOF
 
 
@@ -775,26 +438,25 @@ class pk_debugger(threading.Thread):
         #EOF
 
 
-    def enable_Power_System (self, mVoltTarget:int):    # 0x40
-        if (self._probeMode == probeMode.OFF):
-            setVoltageCmd  = [0x40]
-            setVoltageCmd += uint32_to_buf(mVoltTarget)  # (uint32_t) Vdd
-            setVoltageCmd += uint32_to_buf(mVoltTarget)  # (uint32_t) Vpp operation
-            setVoltageCmd += uint32_to_buf(mVoltTarget)  # (uint32_t) Vpp_op
-            setVoltageCmd += [0x42, 0x43]
-            self.run_Script(self.script_cmd_type, bytearray(0), setVoltageCmd, 0)
-
-            self.read_response("Enable Power System")
+    def set_Voltage (self, mVoltTarget:int):    # 0x40
+        if (mVoltTarget == 0):
+            self.run_Script(self.script_cmd_type, bytearray(0), [0x44], 0)
+            if (0x00 == self.read_response("Shutdown Power")[0]):
+                self._probeMode == probeMode.OFF
+                self._targetState == targetState.OFF
         else:
-            print("ERROR: Power System can be only enabled while detached")
+            if (self._probeMode == probeMode.OFF):
+                setVoltageCmd  = [0x40]
+                setVoltageCmd += uint32_to_buf(mVoltTarget)  # (uint32_t) Vdd
+                setVoltageCmd += uint32_to_buf(mVoltTarget)  # (uint32_t) Vpp operation
+                setVoltageCmd += uint32_to_buf(mVoltTarget)  # (uint32_t) Vpp_op
+                setVoltageCmd += [0x42, 0x43]
+                self.run_Script(self.script_cmd_type, bytearray(0), setVoltageCmd, 0)
+
+                self.read_response("Enable Power System")
+            else:
+                print("ERROR: Power System can be only enabled while detached")
         #EOF
-
-
-    def disable_Power_System(self):                     # 0x44
-        self.run_Script(self.script_cmd_type, bytearray(0), [0x44], 0)
-        if (0x00 == self.read_response("Shutdown Power")[0]):
-            self._probeMode == probeMode.OFF
-            self._targetState == targetState.OFF
 
 
     def select_power_source(self, internal:int):        # 0x46
@@ -838,10 +500,9 @@ class pk_debugger(threading.Thread):
         #EOF
 
 
-    # speed in kHz
     def set_UPDI_Speed(self, speed:int):
         print("Setting UPDI speed to {0}kHz".format(speed))
-        self.run_Script(self.script_cmd_type, uint32_to_buf(speed), SetSpeed_UPDI, 0)
+        self.run_Script(self.script_cmd_type, uint32_to_buf(speed), self.scripts["SetSpeed"], 0)
         self.read_response("Set UPDI Speed")
         #EOF
 
@@ -851,7 +512,7 @@ class pk_debugger(threading.Thread):
             self.exit_Debug_Mode()
 
         if (self._probeMode != probeMode.PROG):
-            self.run_Script(self.script_cmd_type, bytearray(0), EnterProgMode_UPDI, 0)
+            self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["EnterProgMode"], 0)
             ret = self.read_response("Enter Programming Mode")[0]
             if (ret == 0x00):
                 self._probeMode = probeMode.PROG
@@ -863,7 +524,7 @@ class pk_debugger(threading.Thread):
 
     def exit_Prog_Mode(self):
         if (self._probeMode == probeMode.PROG):
-            self.run_Script(self.script_cmd_type, bytearray(0), ExitProgMode_UPDI, 0)
+            self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["ExitProgMode"], 0)
             ret = self.read_response("Exit Program Mode")[0]
             if (ret == 0x00):
                 self._probeMode = probeMode.OFF
@@ -878,7 +539,7 @@ class pk_debugger(threading.Thread):
             self.exit_Prog_Mode()
         
         if (self._probeMode != probeMode.DEBUG):
-            self.run_Script(self.script_cmd_type, bytearray(0), EnterDebugMode_UPDI, 0)
+            self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["EnterDebugMode"], 0)
             ret = self.read_response("Enter Debug Mode")[0]
             if (ret == 0x00):
                 self._probeMode = probeMode.DEBUG
@@ -891,7 +552,7 @@ class pk_debugger(threading.Thread):
 
     def exit_Debug_Mode(self):
         if (self._probeMode == probeMode.DEBUG):
-            self.run_Script(self.script_cmd_type, bytearray(0), ExitDebugMode_UPDI, 0)
+            self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["ExitDebugMode"], 0)
             ret = self.read_response("Exit Debug Mode")[0]
             if (ret == 0x00):
                 self._probeMode = probeMode.OFF
@@ -902,7 +563,7 @@ class pk_debugger(threading.Thread):
 
 
     def halt_Target(self):
-        self.run_Script(self.script_cmd_type, bytearray(0), Halt_UPDI, 0)
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["Halt"], 0)
         ret = self.read_response("Halt Target")[0]
         if (ret == 0x00):
             self._targetState = targetState.HALT
@@ -913,7 +574,7 @@ class pk_debugger(threading.Thread):
 
 
     def resume_Target(self):
-        self.run_Script(self.script_cmd_type, bytearray(0), Run_UPDI, 0)
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["Run"], 0)
         ret = self.read_response("Resume Target")[0]
         if (ret == 0x00):
             self._targetState = targetState.RUN
@@ -924,30 +585,53 @@ class pk_debugger(threading.Thread):
 
 
     def get_halt_status(self):  # Returns True if halted
-        self.run_Script(self.script_cmd_type, bytearray(0), GetHaltStatus_UPDI, 0)
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["GetHaltStatus"], 0)
         ret = self.read_response("Halt Status")[1]
-        self._target_halt_status = get_uint32_from_buf(ret, 0)
-        if self._target_halt_status == 0xAAAAAAAA:
+        new_hs = get_uint32_from_buf(ret, 0)
+        if (self._target_halt_status != new_hs): 
+            print("Halt Status returned: {0:04x}".format(new_hs))
+
+        self._target_halt_status = new_hs
+        if new_hs == 0xAAAAAAAA:
             return True
         else:
             return False
         #EOF
 
 
+
     def reset_Target(self): # Will halt automatically
-        self.run_Script(self.script_cmd_type, bytearray(0), DebugReset_UPDI, 0)
-        self.read_response("Reset Target")
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["DebugReset"], 0)
+        return self.read_response("Reset Target")[0]    # 0x00 is good
 
 
     def reset_halt_Target(self):
         self.halt_Target()
-        self.reset_Target()
+        return self.reset_Target()
+
+
+    def hold_in_reset(self):
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["HoldInReset"], 0)
+        return self.read_response("hold in reset")[0]    # 0x00 is good
+
+
+    def release_from_reset(self):
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["ReleaseFromReset"], 0)
+        return self.read_response("release reset")[0]    # 0x00 is good
+
+
+    def get_runtime_data(self):
+        runtime = [0x1E, 0x00]
+        self.run_Script(self.script_upload_type, bytearray(0), runtime, 0)
+        self.read_response("runtime data")
+        self.read_script_upload(0, "runtime data")
+        self.send_script_done("runtime data")
 
 
     def set_hw_breakpoint(self, num:int, addr:int):
         param = uint32_to_buf(num)
         param += uint32_to_buf(addr)
-        self.run_Script(self.script_cmd_type, param, SetHWBP_UPDI, 0)
+        self.run_Script(self.script_cmd_type, param, self.scripts["SetHWBP"], 0)
         ret = self.read_response("Set HW breakpoint")[0]
         if ret != 0x00:
             print("ERROR: Failed setting HW breakpoint {0} at addr {1:04X}".format(num, addr))
@@ -958,8 +642,8 @@ class pk_debugger(threading.Thread):
 
     def clear_hw_breakpoint(self, num:int):
         param = uint32_to_buf(num)
-        self.run_Script(self.script_cmd_type, param, ClearHWBP_UPDI, 0)
-        ret = self.read_response("Set HW breakpoint")[0]
+        self.run_Script(self.script_cmd_type, param, self.scripts["ClearHWBP"], 0)
+        ret = self.read_response("Clear HW breakpoint")[0]
         if ret != 0x00:
             print("ERROR: Failed clearing HW breakpoint {0}".format(num))
             return False
@@ -968,7 +652,7 @@ class pk_debugger(threading.Thread):
 
 
     def step_target(self):
-        self.run_Script(self.script_cmd_type, [], SingleStep_UPDI, 0)
+        self.run_Script(self.script_cmd_type, [], self.scripts["SingleStep"], 0)
         ret = self.read_response("Single Step")[0]
         if ret != 0x00:
             print("ERROR: Failed Stepping to next instruction")
@@ -977,12 +661,12 @@ class pk_debugger(threading.Thread):
         
 
     def get_PC(self):
-        self.run_Script(self.script_cmd_type, bytearray(0), GetPC_UPDI, 0)
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["GetPC"], 0)
         ret = self.read_response("get_PC")[1]
 
         self.target_pc = get_uint32_from_buf(ret, 0)
         #print("Current PC: {0:06X}".format(self.target_pc))
-        return ret   # get byte (LE) representation 
+        return ret, self.target_pc   # get byte (LE) representation, and integer
         #EOF
 
 
@@ -1001,11 +685,11 @@ class pk_debugger(threading.Thread):
             print("ERROR: Wrong bytearray length passed: {0}".format(param_len))
             return
 
-        if self._device_info == None:
-            print("ERROR: Device must be known to Write PC to it")
+        if self._target == None:
+            print("ERROR: Target must be known to Write PC to it")
             return
         
-        flash_size = self._device_info[devlut_flash_len]
+        flash_size = self._target.flash_size
         flash_mask = (flash_size >> 9) - 1  # Max PC is half the Flash size
         param[3] = 0x00     # make sure to have valid inputs only
         param[2] = 0x00
@@ -1014,7 +698,7 @@ class pk_debugger(threading.Thread):
             print("ERROR: PC bigger then Flash Size")
             return
             
-        self.run_Script(self.script_cmd_type, param, SetPC_UPDI, 0)
+        self.run_Script(self.script_cmd_type, param, self.scripts["SetPC"], 0)
         ret = self.read_response("set_PC")[0]
         if ret == 0x00:
             return True
@@ -1024,28 +708,20 @@ class pk_debugger(threading.Thread):
 
 
     def get_SP_SREG(self):
-        return self.read_device_mem8(0x3D, 3)
+        return self.read_target_mem8(0x3D, 3)
         #EOF
 
-
-    def get_device_ID(self, force:bool = False):
-
+    
+    def get_target_ID(self, force:bool = False):
         if (self._devID == 0x00) or (force is True):
-            self.run_Script(self.script_cmd_type, bytearray(0), GetDeviceID_UPDI, 0)
-            ret = self.read_response("Get Device ID")[1]
+            self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["GetDeviceID"], 0)
+            ret = self.read_response("Get Target ID")[1]
             revision = ret[3]
             devID = ret[0] << 16 | ret[1] << 8 | ret[2]
 
-            try:
-                device_mem = device_lut[devID]
-            except(KeyError, IndexError):
-                print("Device not yet in the Lookup Table: {0:06X}".format(devID))
-            
-            if (device_mem != None):
-                self._device_info       = device_mem
-                self._devID             = devID
-                self._revision          = revision
-                print("Device ID: {0:06X}, Device Name: {1}".format(devID, device_mem[devlut_devname]))
+            self._devID             = devID
+            self._revision          = revision
+            print("Device ID: {0:06X}".format(devID))
         #EOF
 
 
@@ -1059,9 +735,55 @@ class pk_debugger(threading.Thread):
 
     def get_Target_Id(self):
         self.enter_Prog_Mode()
-        self.check_BIST()
-        self.get_device_ID()
+        #self.check_BIST()
+        self.get_target_ID()
         self.exit_Prog_Mode()
+
+
+    def get_ocd_regs(self):
+        data = self.read_target_mem8(0xF80, 12)
+        hwbpa  = get_uint32_from_buf(data, 0)
+        hwbpb  = get_uint32_from_buf(data, 4)
+        print("HWBP: 0x{0:04X} | 0x{1:04X}, 0x{2:02X}, 0x{3:02X}, 0x{4:02X}, 0x{5:02X}, "\
+              .format(hwbpa, hwbpb, data[8], data[9], data[10], data[11]))
+
+
+    def get_probe_status(self):
+        get_key = [
+            0x9B, 0x00, 0x07,       # load into reg 0x00 the int 0x07 (ASI_KEY_STATUS)
+            0x1E, 0x0E, 0x00,       # load CS reg
+            0x9F,                   # copy data to return
+            0x9B, 0x00, 0x0B,       # load into reg 0x00 the int 0x0B (ASI_SYS_STATUS)
+            0x1E, 0x0E, 0x00,       # load CS reg
+            0x9F,                   # copy data to return
+        ]
+        message = self.create_msg_header(self.script_cmd_type, 24+len(get_key), 0)
+        message += self.create_script_header(0, len(get_key))
+        message += bytearray(get_key)
+        try:
+            self._icd.write(self._cmd_write_ep, message, 1000)
+        except usb.core.USBTimeoutError:
+            return probeMode.TO_Write
+        
+        ret_val = probeMode.OFF
+        try:
+            ret = self._icd.read(self._cmd_read_ep, 1024, 1000)
+            ret_status = get_uint32_from_buf(ret, 16)
+            if (ret_status == 0x00):
+                data_len   = ret[20]
+                if (data_len == 0x02):
+                    if ret[24] == 0x02:
+                        ret_val = probeMode.DEBUG
+                    elif ret[25] == 0x08:
+                        ret_val = probeMode.PROG
+            ret_val = probeMode.OFF
+        except usb.core.USBTimeoutError:
+            ret_val = probeMode.TO_Read
+            try:
+                self.recover_script()
+            except:
+                pass
+        return ret_val
 
 
     def create_msg_header(self, type:int, message_len:int, transfer_len:int):
@@ -1079,6 +801,9 @@ class pk_debugger(threading.Thread):
 
 
     def run_Script(self, type:int, scr_params:bytearray, script:bytearray, transfer_len:int):
+        if (self._icd == None):
+            raise NoDebugger
+
         script_len = len(script)
         param_len = len(scr_params)
         header_len = 16 + 8
@@ -1094,16 +819,27 @@ class pk_debugger(threading.Thread):
         for x in range (0, script_len):
             transfer[preamble_len + x] = script[x]
 
-        self._icd.write(self._cmd_write_ep, transfer)
+        try: 
+            self._icd.write(self._cmd_write_ep, transfer)
+        except:
+            print("Script write failed, trying to reset")
+            self.recover_script()
+
         #EOF
 
 
     def read_response(self, func:str, timeout:int = 1000):
-        ret = self._icd.read(self._cmd_read_ep, 1024, timeout)
-        response_status = get_uint32_from_buf(ret, 0)
-        if (response_status != 0x0D):
-            raise ValueError("Wrong Device Response On '" + func + "'. Repose: {0}".format(ret))
-        
+        try: 
+            ret = self._icd.read(self._cmd_read_ep, 1024, timeout)
+            response_status = get_uint32_from_buf(ret, 0)
+            if (response_status != 0x0D):
+                raise ValueError("Wrong Device Response On '" + func + "'. Repose: {0}".format(ret))
+        except:
+            print("Read response failed, trying to reset")
+            self.recover_script()
+            return
+
+
         ret_len = get_uint32_from_buf(ret, 8)
         ret_status = get_uint32_from_buf(ret, 16)
         data_len   = get_uint32_from_buf(ret, 20)
@@ -1129,22 +865,22 @@ class pk_debugger(threading.Thread):
 
 
     def read_script_upload(self, expected_len:int, func:str):
-        read_len = ((expected_len // 512) + 1) * 512
-        ret = self._icd.read(self._data_read_ep, read_len, 1000)
-        received_len = len(ret) 
-        if (received_len!= expected_len):
-            print('WARNING: Wrong Number of Received Bytes in "{0}". Expected: {1}. Received: {2}'.format(func, expected_len, received_len))
-        
+        if (self._icd == None):
+            raise NoDebugger
+        ret = self._icd.read(self._data_read_ep, expected_len, 1000)
         return ret
         #EOF
 
 
     def write_script_download(self, data:bytearray, func:str):
+        if (self._icd == None):
+            raise NoDebugger
         self._icd.write(self._data_write_ep, data)
 
-  
 
     def send_script_done(self, func:str):
+        if (self._icd == None):
+            raise NoDebugger
         script_done_type = 0x0103  # == 259
         transfer = self.create_msg_header(script_done_type, 16, 0)
         self._icd.write(self._cmd_write_ep, transfer)
@@ -1154,6 +890,9 @@ class pk_debugger(threading.Thread):
 
 
     def get_Status_From_String(self, key:bytes, func:str):
+        if (self._icd == None):
+            raise NoDebugger
+        
         type = 0x0105
         if (key[-1:] != 0x00):
             key += b"\x00"  # Add String NULL terminator if there is none
@@ -1177,22 +916,13 @@ class pk_debugger(threading.Thread):
 
 
     def get_memory_map_xml(self):
-        self._create_mem_map_xml()
         return self._memory_map_xml
         #EOF
 
 
     def get_target_xml(self):
-        self._create_target_xml()
         return self._target_xml
         #EOF
-
-
-    def get_threads_xml(self):
-        tree_thread = ET.Element('threads')
-        tread = ET.SubElement(tree_thread, 'thread', id="1", name="Main")
-        head = b'<?xml version="1.0"?><!DOCTYPE feature SYSTEM "threads.dtd">'
-        return head + ET.tostring(tree_thread)
 
 
     def conv_byte_to_hex(self, byte:int):
@@ -1213,9 +943,9 @@ class pk_debugger(threading.Thread):
         #    raise ValueError ("Register Numbers out of range. Start: {0}, End: {1}".format(start, end))
         #if read_len not in range(1, 33):
         #    raise ValueError ("Register Range out of Bounds. Start: {0}, End: {1}".format(start, end))
-        cpu_regs = self.read_device_mem8(0, 32) # limit to all CPU regs for now 
-        sreg_sp = self.read_device_mem8(0x3D, 3)
-        cpu_pc = self.get_PC()
+        cpu_regs = self.read_target_mem8(0, 32) # limit to all CPU regs for now 
+        sreg_sp = self.read_target_mem8(0x3D, 3)
+        cpu_pc = self.get_PC()[1] * 2
 
         ret_val = ""
         #for x in range (0, start):
@@ -1242,10 +972,10 @@ class pk_debugger(threading.Thread):
         # SREG, SP, PC2
         ret_val += self.conv_byte_to_hex(sreg_sp[2])
         ret_val += self.conv_byte_to_hex(sreg_sp[0]) + self.conv_byte_to_hex(sreg_sp[1]) 
-        ret_val += self.conv_byte_to_hex(cpu_pc[0])
-        ret_val += self.conv_byte_to_hex(cpu_pc[1])
-        ret_val += self.conv_byte_to_hex(cpu_pc[2])
-        ret_val += self.conv_byte_to_hex(cpu_pc[3])
+        ret_val += self.conv_byte_to_hex((cpu_pc >>  0) & 0xFF)
+        ret_val += self.conv_byte_to_hex((cpu_pc >>  8) & 0xFF)
+        ret_val += self.conv_byte_to_hex((cpu_pc >> 16) & 0xFF)
+        ret_val += self.conv_byte_to_hex((cpu_pc >> 24) & 0xFF)
         return ret_val.encode("ascii")
 
 
@@ -1260,9 +990,9 @@ class pk_debugger(threading.Thread):
             return
         
         addr = 4000     # == 0x0FA0. Undocumented Memory area between SYSCFG and NVMCTRL. 0xF80 seems to be OCD module address
-        self.write_device_mem8(addr, data[0:32])    # CPU Regs, all in one go
-        self.write_device_mem8(0x3F, data[32:33])   # SREG
-        self.write_device_mem8(0x3D, data[33:35])   # SP
+        self.write_target_mem8(addr, data[0:32])    # CPU Regs, all in one go
+        self.write_target_mem8(0x3F, data[32:33])   # SREG
+        self.write_target_mem8(0x3D, data[33:35])   # SP
         self.set_PC(data[35:39])                    # PC
 
 
@@ -1271,18 +1001,18 @@ class pk_debugger(threading.Thread):
             val &= 0xFF
             addr = 4000 + reg
             param = [val]
-            self.write_device_mem8(addr, param)
+            # self.read_target_mem8(addr, param)
         elif reg == 32:     # SREG
             val &= 0xFF
             addr = 0x3F
             param = [val]
-            self.write_device_mem8(addr, param)
+            # self.read_target_mem8(addr, param)
         elif reg == 33:     # SP
             addr = 0x3D
             param = [val & 0xFF, (val>>8) & 0xFF]
-            self.write_device_mem8(addr, param)
+            # self.read_target_mem8(addr, param)
         elif reg == 34:
-            self.set_PC(val)
+            self.get_PC()
         else:
             print("ERROR: unknown register to get: {0}". format(reg))
 
@@ -1296,16 +1026,16 @@ class pk_debugger(threading.Thread):
             val &= 0xFF
             addr = 4000 + reg
             param = [val]
-            ret_val = self.write_device_mem8(addr, param)
+            ret_val = self.write_target_mem8(addr, param)
         elif reg == 32:     # SREG
             val &= 0xFF
             addr = 0x3F
             param = [val]
-            ret_val = self.write_device_mem8(addr, param)
+            ret_val = self.write_target_mem8(addr, param)
         elif reg == 33:     # SP
             addr = 0x3D
             param = [val & 0xFF, (val>>8) & 0xFF]
-            ret_val = self.write_device_mem8(addr, param)
+            ret_val = self.write_target_mem8(addr, param)
         elif reg == 34:
             ret_val = self.set_PC(val)
         else:
@@ -1323,16 +1053,15 @@ class pk_debugger(threading.Thread):
         start_modulo = (start % 512)
         start_mod = start - start_modulo
         
-        param = uint32_to_buf(0x80000 + start_mod)
+        param = uint32_to_buf(0x800000 + start_mod)
         param += uint32_to_buf(len_mod)
 
-        self.run_Script(self.script_upload_type, param, ReadProgmem_UPDI, len_mod)
+        self.run_Script(self.script_upload_type, param, self.scripts["ReadProgmem"], len_mod)
         self.read_response("Read Program Memory")
         ret = self.read_script_upload(len_mod, "Read Program Memory")
         self.send_script_done("Read Program Memory")
-
-        ret = ret[start_modulo:(start_modulo+len)]
-        return ret
+        flash_read = ret[start_modulo:(start_modulo+len)]
+        return flash_read
 
 
     def prepare_target_flash(self, start:int, data:bytes):
@@ -1346,38 +1075,42 @@ class pk_debugger(threading.Thread):
         #fill = 0xFF
         #fill = fill.to_bytes(1, 'little')
         for x in range (self._program_tail, start):
-            self._new_program.append(255)
+            self._new_program[x] = 255
             self._program_tail += 1
-        
-        self._new_program += data
-        self._program_tail += data_len
+
+        for y in range (0, data_len):
+            self._new_program[start+y] = data[y]
+            self._program_tail += 1
         #EOF
 
 
     def finalize_download(self):
         if (self.erase_target_flash() == False):
             return False
-        
-        self.enter_Prog_Mode()
 
-        transfers = (self._program_tail // 512) + 1    # split to 512 byte long frames
-        transfer_mod = self._program_tail % 512
-        if (transfer_mod != 0):
-            for x in range (transfer_mod, 512):    # Fill our new Program up to the next full 512
-                self._new_program.append(255)
-                self._program_tail += 1
-        
-        print("INFO: Starting Programming: Block count: {0}, Program Length: {1}". format(transfers, self._program_tail))
+        self.prepare_target_flash(((self._program_tail // 1024) + 1) * 1024, [])    # Fill up
 
-        param = uint32_to_buf(0x80000)
+        self.enter_Prog_Mode()  
+        
+        transfers = self._program_tail // 1024
+        print("INFO: Starting Programming: Transfer count: {0}, Program Length: {1}". format(transfers, self._program_tail))
+
+        param = uint32_to_buf(0x800000)
         param += uint32_to_buf(self._program_tail)
 
         # Start Programming
-        self.run_Script(self.script_download_type, param, WriteProgmem_UPDI, self._program_tail)
+        self.run_Script(self.script_download_type, param, self.scripts["WriteProgmem"], self._program_tail)
         self.read_response("Download Program")
 
-        # Program Flash
-        self._icd.write(self._data_write_ep, self._new_program)
+        # Program Flash, split transfer to 4k chunks
+        tail_iterator = 0
+        total_length = self._program_tail
+        while (total_length > 1024):
+            new_tail = tail_iterator+1024
+            self._icd.write(self._data_write_ep, self._new_program[tail_iterator:new_tail], 10000)
+            tail_iterator = new_tail
+            total_length -= 1024
+        self._icd.write(self._data_write_ep, self._new_program[tail_iterator:self._program_tail], 10000)
         
         # Check for Errors
         key = b"ERROR_STATUS_KEY"
@@ -1386,13 +1119,13 @@ class pk_debugger(threading.Thread):
         if not (ret.startswith(b"NONE")):
             print ("ERROR: Download Program failed, code: {0}".format(ret)) 
 
-        downloaded_code = self.read_target_flash(0x80000, self._program_tail)
+        downloaded_code = self.read_target_flash(0x00, self._program_tail)
 
-        if (len(self._new_program) != len(downloaded_code)):
-            print("WARNING: Different Code Sizes")
+        if (self._program_tail != len(downloaded_code)):
+            print("WARNING: Different Code Sizes. Expected: {0}, Received: {1}".format(self._program_tail, len(downloaded_code)))
         else:
             failed = 0
-            for x in range (0, len(self._new_program)):
+            for x in range (self._program_tail):
                 if (self._new_program[x] != downloaded_code[x]):
                     print("WARNING: PROGMEM discrepancy Found on pos {0}". format(x))
                     failed = 1
@@ -1403,11 +1136,10 @@ class pk_debugger(threading.Thread):
         self.target_flash_erased = 0
         self.exit_Prog_Mode()
         # Reset variables
-        self._new_program = []
         self._program_tail = 0
 
         self.enter_Debug_Mode()
-
+        self.halt_Target()
         pass
 
         #EOF
@@ -1418,7 +1150,7 @@ class pk_debugger(threading.Thread):
             return True
         self.enter_Prog_Mode()
         print("INFO: Erasing Target")
-        self.run_Script(self.script_cmd_type, bytearray(0), EraseChip_UPDI, 0)
+        self.run_Script(self.script_cmd_type, bytearray(0), self.scripts["EraseChip"], 0)
         ret = self.read_response("Erase Chip")[0]
         self.exit_Prog_Mode()
         if ret == 0x00:
@@ -1429,20 +1161,20 @@ class pk_debugger(threading.Thread):
         #EOF
 
 
-    def read_device_mem8(self, addr:int, read_len:int):
+    def read_target_mem8(self, addr:int, read_len:int):
         param = uint32_to_buf(addr)
         param += uint32_to_buf(read_len)
-        self.run_Script(self.script_upload_type, param, ReadMem8_UPDI, read_len)    # reading only 1 byte
+        self.run_Script(self.script_upload_type, param, self.scripts["ReadMem8"], read_len)
 
-        self.read_response("Read Device Mem8")
-        ret = self.read_script_upload(read_len, "Read Device Mem8")   
+        self.read_response("Read Target Mem8")
+        ret = self.read_script_upload(read_len, "Read Target Mem8")   
 
-        self.send_script_done("Read Device Mem8")
+        self.send_script_done("Read Target Mem8")
         return ret
         #EOF
     
 
-    def write_device_mem8(self, addr:int, value:bytearray):
+    def write_target_mem8(self, addr:int, value:bytearray):
         if (self._probeMode != probeMode.DEBUG):
             print("ERROR: Attempt to write register memory outside Debug Mode")
             return False
@@ -1451,8 +1183,8 @@ class pk_debugger(threading.Thread):
         param = uint32_to_buf(addr)
         param += uint32_to_buf(write_len)
 
-        self.run_Script(self.script_download_type, param, WriteMem8_UPDI, write_len)
-        ret = self.read_response("Write Device Mem8")[0]
+        self.run_Script(self.script_download_type, param, self.scripts["WriteMem8"], write_len)
+        ret = self.read_response("Write Target Mem8")[0]
         if (ret != 0x00):
             print ("ERROR: Init Write Mem8 failed, code: {0}".format(ret))
             return False
@@ -1461,8 +1193,8 @@ class pk_debugger(threading.Thread):
 
         key = b"ERROR_STATUS_KEY"
 
-        ret = self.get_Status_From_String(key, "Write Device Mem8")
-        self.send_script_done("Write Device Mem8")
+        ret = self.get_Status_From_String(key, "Write Target Mem8")
+        self.send_script_done("Write Target Mem8")
         if not (ret.startswith(b"NONE")):
             print ("ERROR: Download Program failed, code: {0}".format(ret)) 
             return False
@@ -1471,28 +1203,16 @@ class pk_debugger(threading.Thread):
         #EOF
 
 
-#    def enter_downloading_mode(self):
-#        if (self._probeMode == probeMode.DEBUG):
-#            self.exit_Debug_mode()
-#
-#        if (self.erase_target_flash() == True):
-#            self._targetState = targetState.ERASED
-#            return True
-#
-        #return False
-        #EOF
-
-
     def attach_power(self):
         self.get_Voltages()                             # 0x47
         if (self.VddVoltageSense < 1000):  # Only power the system if there is no voltage already
             if (self._voltage >= 1800):
                 self.select_power_source(True)          # 0x46
-                self.disable_Power_System()             # 0x44
-                self.enable_Power_System(self._voltage) # 0x40  ToDo: Figure out live connect with disabled power supply
+                self.set_Voltage(0)             # 0x44
+                self.set_Voltage(self._voltage) # 0x40
             else:
                 self.select_power_source(False)         # 0x46
-                self.disable_Power_System()             # 0x44
+                self.set_Voltage(0)             # 0x44
         self.get_Voltages()                             # 0x47
         if (self.VddVoltageSense in range (1800, 5500)):    # Assert Target Voltage 
             return 1
@@ -1512,6 +1232,7 @@ class pk_debugger(threading.Thread):
         self.set_UPDI_Speed(self._updi_speed)   # len 0x21
         self.get_Target_Id()
         self.enter_Debug_Mode()                 # len 0x6C
+        self.halt_Target()                 # len 0x6C
         self._target_attached = True
         #EOF
 
@@ -1523,7 +1244,7 @@ class pk_debugger(threading.Thread):
             self.exit_Prog_Mode()
         self._targetState = targetState.OFF
         self.set_live_connect(False)        # 0x39
-        self.disable_Power_System()         # 0x44
+        self.set_Voltage(0)         # 0x44
         self._target_attached = False       # Always allow detatching
 
 
@@ -1533,14 +1254,14 @@ class pk_debugger(threading.Thread):
         self.set_live_connect(False)            # 0x39
         self.attach_power()
         self.set_LED_Brightness(5)              # 0xCF
-        self.set_UPDI_Speed(self._updi_speed)   # 0x91
+        self.set_UPDI_Speed(self._updi_speed)   # len 0x21
         self.get_Target_Id()
         self.set_live_connect(False)
-        self.disable_Power_System()
+        self.set_Voltage(0)
         #EOF
 
 
-    def live_connect_to_device(self):
+    def live_connect_to_target(self):
         self.get_Firmware_Info()                    # 0xE1
         self.set_PTG_mode(False)                    # 0x5E; 0x00
         
@@ -1548,11 +1269,11 @@ class pk_debugger(threading.Thread):
 
         if (self._voltage >= 1800):
             self.select_power_source(True)          # 0x46
-            self.disable_Power_System()             # 0x44
-            self.enable_Power_System(self._voltage) # 0x40  ToDo: Figure out live connect with disabled power supply
+            self.set_Voltage(0)             # 0x44
+            self.set_Voltage(self._voltage) # 0x40  ToDo: Figure out live connect with disabled power supply
         else:
             self.select_power_source(False)         # 0x46
-            self.disable_Power_System()             # 0x44
+            self.set_Voltage(0)             # 0x44
 
         self.get_Voltages()                     # 0x47
         self.set_LED_Brightness(5)              # 0xCF
@@ -1562,14 +1283,14 @@ class pk_debugger(threading.Thread):
         self.halt_Target()                      # len 0x59
         self.get_halt_status()                  # len 0x59; 0x45
         self.get_PC()                           # len 0x3D
-        self.read_device_mem8(0x3F, 1)          # len 0x33; 0x3F
+        self.read_target_mem8(0x3F, 1)          # len 0x33; 0x3F
         #EOF
 
 
-    def reset_connected_device(self):
+    def reset_connected_target(self):
         self.reset_Target()                 # len 0x53
         self.get_PC()                       # len 0x3D
-        self.read_device_mem8(0x3F)         # len 0x33
+        self.read_target_mem8(0x3F)         # len 0x33
         #EOF
 
 
@@ -1577,5 +1298,5 @@ class pk_debugger(threading.Thread):
         self.exit_Debug_Mode()          # len 0x1A
         #self.get_Firmware_Info()        # 0xE1
         self.set_live_connect(True)     # 0x39
-        self.disable_Power_System()     # 0x44
+        self.set_Voltage(0)     # 0x44
 #EOC

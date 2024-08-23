@@ -28,14 +28,20 @@
 
 
 import logging
-import array
-import socket
-import pyocd
-import threading
-import queue
-from pk_debugger_iface import pk_debugger
+import socket, threading, queue     # GDB operation and communication
+import argparse, signal             # Command Line input handling
+from pk_debugger_iface import *
 from time import sleep
 from typing import (Dict, List, Optional, Tuple)
+
+
+
+
+SIGKILL = 0x09  # Got a Ctrl+C on terminal
+SIGSTOP = 0x11
+
+
+
 
 
 LOG = logging.getLogger(__name__)
@@ -82,20 +88,21 @@ def unescape(data: bytes) -> List[int]:
 
 
 class gdb_server(threading.Thread):
-    def __init__(self, port:int, debugger:pk_debugger):
+    def __init__(self, port:int, part:str, voltage:int, baud:int, keepalive:bool):
         super().__init__()
         self._event_queue = queue.Queue()
-        self.shutdown_event = threading.Event()
-        self.detach_event = threading.Event()
+        self.quit_flag = False
         self.lock = threading.Lock()
-        self.debugger:pk_debugger = debugger
-        self.packet_io = gdbserver_socket_io_thread(port, self._event_queue)
-        self.target = None
-        self.session = None
-        self.packet_size = 2048
-        self.persistence = False    # Keep connection open upon program finish
+        self.debugger = pk_debugger(part, voltage, baud)
+        self.packet_size = 4096
+        self.packet_io = gdbserver_socket_io_thread(port, self.packet_size)
+        
+        self.persistence = keepalive
         
         self._programming_state = 0
+
+        self.hwbp_a = 0
+        self.hwbp_b = 0
 
         self.first_run_after_reset_or_flash = True
         self.COMMANDS = {
@@ -125,39 +132,73 @@ class gdb_server(threading.Thread):
                 b'Z' : (self.breakpoint,         1   ), # Insert breakpoint/watchpoint.
             }
 
+        self.thread_xml = \
+        '''<?xml version="1.0"?><!DOCTYPE feature SYSTEM "threads.dtd"><threads><thread id="1" name="main">Main Thread</thread></threads>'''.encode()
         self.setDaemon(True)
         self.start()
-        print('GDB server started on port {0}'.format(port))
+
     #EOF
 
-    def stop(self, wait=True):
-        if self.is_alive():
-            self.shutdown_event.set()
-            if wait:
-                self.join()
-                pass
+    def stop(self):
+        self.quit_flag = True
+        self.packet_io.close_sock("")
     
-    def run(self):
-        while not self.shutdown_event.is_set():
-            if self.shutdown_event.is_set():
-                break
 
-                # Make sure the target is halted. Otherwise gdb gets easily confused.
-                #self.target.halt()
-                
+    def run(self):
+        print("GDB server thread started")
+
+        try:
+            self.debugger.init_debugger()
+        except UnknownPart:
+            print("Unknown Part name \"{0}\", aborting.".format(self.debugger.part))
+            self.quit_flag = True
+        except UnknownScript:
+            print("No Script set found for \"{0}\", aborting.".format(self.debugger.part))
+            self.quit_flag = True
+        except ErrorXML:
+            print("Failed to generate GDB XML files for \"{0}\", aborting.".format(self.debugger.part))
+            self.quit_flag = True
+        except NoDebugger:
+            print("No known debugger connected to USB, aborting.")
+            self.quit_flag = True
+        
+        if (self.quit_flag is False):
+            print("Debugger found, checking Connection... ", end ='')
+            try:
+                self.debugger.check_connection()
+            except:
+                print("Failed.")
+                print("Please reset the debugger by removing the power supply.")
+                self.quit_flag = True
+            print("Done")
+            
+            self.packet_io.start()
+            self.packet_io.send_cmd("Open")
+
+
+
+
+
+        while self.quit_flag is False:
             self._run_connection()
             
             sleep(0.1)
-        print("Stopping server thread")
-        self.stop()
+        
+        if self.packet_io.is_alive():
+            self.packet_io.send_cmd("Stop")
+            self.packet_io.join()
+        try:
+            self.debugger.detach_target()
+        except:
+            pass
+        print("GDB server thread stopped")
         #self._cleanup()
+
 
     def _run_connection(self):
         assert self.packet_io
-
-        self.detach_event.clear()
-
-        while not (self.detach_event.is_set() or self.shutdown_event.is_set()):
+        print("gdbserver starting rx loop")
+        while self.packet_io.is_alive():
             if self.packet_io.interrupt_event.is_set():
                 print("GDB Received Interrupt, Got ctrl-c, halting")
                 self.debugger.halt_Target()
@@ -165,44 +206,31 @@ class gdb_server(threading.Thread):
                 self.send_stop_notification()
                 self.packet_io.interrupt_event.clear()
 
-            try:
-                event = self._event_queue.get(False)
-                if event == "disconnect":
-                    self.debugger.detach_target()
-                    self.detach_event.set()
-                    break
-            except queue.Empty:
-                pass
-
             # read command
-            packet = self.packet_io.receive(block=True)
+            packet = self.packet_io.receive()
 
-            if self.shutdown_event.is_set():
-                break
-
-            if packet is None:
-                sleep(0.1)
-                continue
-
-            if packet is not None and len(packet) != 0:
+            if (packet != None) and (len(packet) > 0):
                 # decode and prepare resp
                 resp = self.handle_message(packet)
-
                 if resp is not None:
                     # send resp
                     self.packet_io.send(resp)
+            
+            cmd = self.packet_io.recv_cmd()
+            if cmd != None:
+                if cmd == "Disconnected":           # Debugging Stopped or closed on error
+                    if self.persistence == True:
+                        self.debugger.detach_target()
+                        self.packet_io.send_cmd("Reopen")
+                    else:
+                        break
 
-        print("gdbserver exiting connection loop")
+                elif cmd == "Closed":
+                    self.debugger.detach_target()
+                    self.quit_flag = True
+                    break
 
-        # Clean up the connection.
-        self.packet_io.stop()
-
-        # If persisting is not enabled, we exit on detach. Otherwise prepare for a new connection.
-        #if self.persist:
-            #print("preparing for next connection")
-            #self._cleanup_for_next_connection()
-        #else:
-         #   self.shutdown_event.set()
+        print("gdbserver leaving rx loop")
     #EOF
 
 
@@ -229,7 +257,7 @@ class gdb_server(threading.Thread):
         elif query == b'threads':
             if annex != b'':
                 return self.create_rsp_packet(b"E00")
-            xml = self.debugger.get_threads_xml()
+            xml = self.thread_xml   # Fixed string, as there isn't much to change anyway
         else:
             # Unrecognised query object, so return empty packet.
             print("Unsupported XML query ({0}), annex ({1})".format(query, annex))
@@ -291,7 +319,7 @@ class gdb_server(threading.Thread):
         # In extended-remote mode, detach should detach from the program but not close the connection. gdb assumes
         # the server connection is still valid. Detaching from the program doesn't really make sense for embedded
         # targets, so just ignore the detach.
-        self.debugger.detach_target()
+        # self.debugger.detach_target()
         if not self._is_extended_remote:
             self.detach_event.set()
         return self.create_rsp_packet(b"OK")
@@ -334,7 +362,7 @@ class gdb_server(threading.Thread):
             # And it does not allow a custom list. That's a couple hours wasted
             # Can't get memory map to woark either.
             # b'qXfer:memory-map:read+'
-            features = [b'qXfer:features:read+', b'QStartNoAckMode+', b'qXfer:threads:read+', b'qXfer:memory-map:read+']
+            features = [b'qXfer:features:read+', b'QStartNoAckMode+', b'qXfer:threads:read+'] #, b'qXfer:memory-map:read+']
             features.append(b'PacketSize=' + (hex(self.packet_size).encode())[2:])
             resp = b';'.join(features)
             return self.create_rsp_packet(resp)
@@ -394,7 +422,7 @@ class gdb_server(threading.Thread):
 
     def is_thread_alive(self, data):
         threadId = int(data[1:-3], 16)
-        print("GDB is inquiring state of Thread {0}".format(threadId))
+        #print("GDB is inquiring state of Thread {0}".format(threadId))
 
         if (threadId == 1):
             return self.create_rsp_packet(b'OK')
@@ -426,7 +454,7 @@ class gdb_server(threading.Thread):
             response += ("T" + self.debugger.conv_byte_to_hex(0x11)) # Default to SIGSTOP
 
         cpu_regs = self.debugger.get_SP_SREG()
-        cpu_pc = self.debugger.get_PC()
+        cpu_pc = (self.debugger.get_PC()[1]) * 2    # gdb needs byte addressing
         # SREG
         response += (self.debugger.conv_byte_to_hex(32) + ":")
         response += (self.debugger.conv_byte_to_hex(cpu_regs[2]) + ";")
@@ -437,10 +465,11 @@ class gdb_server(threading.Thread):
         response += ";"
         # PC
         response += (self.debugger.conv_byte_to_hex(34) + ":")
-        response += self.debugger.conv_byte_to_hex(cpu_pc[0])
-        response += self.debugger.conv_byte_to_hex(cpu_pc[1])
-        response += self.debugger.conv_byte_to_hex(cpu_pc[2])
-        response += self.debugger.conv_byte_to_hex(cpu_pc[3])
+        #response += str(struct.pack('<I', cpu_pc))
+        response += self.debugger.conv_byte_to_hex((cpu_pc >>  0) & 0xFF)
+        response += self.debugger.conv_byte_to_hex((cpu_pc >>  8) & 0xFF)
+        response += self.debugger.conv_byte_to_hex((cpu_pc >> 16) & 0xFF)
+        response += self.debugger.conv_byte_to_hex((cpu_pc >> 24) & 0xFF)
         response += ";"
         response += "thread:01;"
 
@@ -511,11 +540,9 @@ class gdb_server(threading.Thread):
         
         if ops[0] == b'FlashErase':
             param = ops[1]
-            start, length = param.split(b',')
-            #start = int(start, 16)
-            #length = int(length, 16)
-            start = self.decode_hex_string(start)
-            length = self.decode_hex_string(length)
+            start, length = param.split(b',', 1)
+            start = int(start, 16)
+            length = int(length, 16)
             print("GDB Flash Erase: Start:0x{0:04X}, Len:0x{1:04X}".format(start, length))
             # doing only chip erase for now
             if (start == 0 and length >= 512):
@@ -525,7 +552,7 @@ class gdb_server(threading.Thread):
 
         elif ops[0] == b'FlashWrite':
             start = ops[1]
-            start = self.decode_hex_string(start)
+            start = int(start, 16)
             
             # search for second ':' (beginning of data encoded in the message)
             second_colon = 0
@@ -536,7 +563,7 @@ class gdb_server(threading.Thread):
                 idx_begin += 1
     
             payload = unescape(data[idx_begin:])
-            print("GDB Flash Write: Start:0x{0:04X}, Len:0x{1:04X}".format(start, len(payload)))
+            print("GDB Flash Write: Start:0x{0:06X}, Len:0x{1:06X}".format(start, len(payload)))
             # Add data to flash loader
             self.debugger.prepare_target_flash(start, payload)
 
@@ -550,6 +577,7 @@ class gdb_server(threading.Thread):
 
         return None
         #EOF
+
 
     def handle_general_set(self, msg:bytes):
         feature = msg.split(b'#')[0]
@@ -573,7 +601,7 @@ class gdb_server(threading.Thread):
     def get_registers(self):
         if (self._programming_state == 1):      # Workaround as we don't know how big the new program is
             self._programming_state = 0         # This was done before I figured out the memorymap .xml
-            self.debugger.finalize_download()
+            self.debugger.finalize_download()   # It makes sure that we buffer everything before actually programming
 
         print("GDB request CPU registers")
         return self.create_rsp_packet(self.debugger.get_target_registers())
@@ -602,6 +630,7 @@ class gdb_server(threading.Thread):
                 return self.create_rsp_packet(b'OK')
             else:
                 return self.create_rsp_packet(b'E01')   # Reset failed
+            
         else:
             print('GDB received Unknown remote command: {0}'.format(cmd))
             return self.create_rsp_packet(b'OK')
@@ -627,8 +656,10 @@ class gdb_server(threading.Thread):
 
     def resume(self, data):
         # addr = self._get_resume_step_addr(data)
-        self.debugger.resume_Target()
-        print("target resumed")
+        if self.debugger.resume_Target() is True:
+            print("target resumed")
+        else:
+            print("Failed to resume target")
 
         if self.first_run_after_reset_or_flash:
             self.first_run_after_reset_or_flash = False
@@ -641,7 +672,7 @@ class gdb_server(threading.Thread):
 
         #while fault_retry_timeout.check():
         while True:
-            if self.shutdown_event.is_set():
+            if self.quit_flag == True:
                 self.packet_io.interrupt_event.clear()
                 return self.create_rsp_packet(val)
 
@@ -667,8 +698,7 @@ class gdb_server(threading.Thread):
 
             self.lock.acquire()
 
-            state = self.debugger.get_halt_status()
-            if (state == True):
+            if (self.debugger.get_halt_status() == True):
                 val = self.get_t_response()
                 break
 
@@ -686,23 +716,22 @@ class gdb_server(threading.Thread):
             else:
                 return self.create_rsp_packet(b"E01")
         else:
-            while (True):
+            while self.quit_flag == False:
                 ret = self.debugger.step_target()
                 if ret == False:
                     return self.create_rsp_packet(self.get_t_response(force_signal=0x05))
                 else:
-                    self.debugger.get_PC()
-                    print("Current PC:0x{0}".format(self.debugger.target_pc))
-                    if (self.debugger.target_pc in range(start, end)):
+                    target_pc = (self.debugger.get_PC()[1]) * 2   # gdb needs byte addressing
+                    print("Current PC:0x{0:04X}".format(target_pc))
+                    if (target_pc not in range(start, end)):    # "target_PC" always point to next insn, adjusting here
                         return self.create_rsp_packet(self.get_t_response(force_signal=0x05))
                 
                 if self.packet_io.interrupt_event.wait(0.01):
                     print("GDB received CTRL-C")
                     self.packet_io.interrupt_event.clear()
                     return self.create_rsp_packet(self.get_t_response(force_signal=0x05))
+            return self.create_rsp_packet(b"E01")
         #EOF
-
-
 
 
     def get_memory(self, data):
@@ -711,12 +740,11 @@ class gdb_server(threading.Thread):
         length = split[1].split(b'#')[0]
         length = int(length, 16)
 
-        print("GDB get Memory: addr=0x{0:x} len={1}".format(start, length))
-
         if (length == 0) and (start == 0):
             return self.create_rsp_packet(b"OK")
 
         elif (start in range(0x0000, 0x10000)): # Flash
+            print("GDB get Flash: addr=0x{0:04X} len={1}".format(start, length))
             ret = self.debugger.read_target_flash(start, length)
             response = ""
             for x in ret:
@@ -724,6 +752,7 @@ class gdb_server(threading.Thread):
             return self.create_rsp_packet(response.encode('ascii'))
         
         elif (start in range (0x8000, 0x10000)):  # Mapped PROGMEM, ".rodata"
+            print("GDB get Mapped Flash: addr=0x{0:04X} len={1}".format(start, length))
             ret = self.debugger.read_target_flash(start - 0x8000, length)
             response = ""
             for x in ret:
@@ -731,13 +760,15 @@ class gdb_server(threading.Thread):
             return self.create_rsp_packet(response.encode('ascii'))
 
         elif (start in range (0x800000, 0x808000)): # I/O, Periph, RAM
-            ret = self.debugger.read_device_mem8(start - 0x800000, length)
+            print("GDB get SRAM: addr=0x{0:04X} len={1}".format(start - 0x800000, length))
+            ret = self.debugger.read_target_mem8(start - 0x800000, length)
             response = ""
             for x in ret:
                 response += "{0:02X}".format(x)
             return self.create_rsp_packet(response.encode('ascii'))
         
         elif (start in range (0x808000, 0x810000)):  # Text data area
+            print("GDB get Text: addr=0x{0:04X} len={1}".format(start - 0x808000, length))
             ret = self.debugger.read_target_flash(start - 0x808000, length)
             response = ""
             for x in ret:
@@ -750,21 +781,21 @@ class gdb_server(threading.Thread):
 
     def write_memory(self, data):
         cmd = data[0:-3]
-        arg, payload = cmd.split(b':')
-        start, length = arg.split(b',')
+        arg, payload = cmd.split(b':', 1)
+        start, length = arg.split(b',', 1)
         payload = unescape(payload)
-        start = self.decode_hex_string(start, 16)
-        length = self.decode_hex_string(length, 16)
-        print("GDB Write Binary Data Start: 0x{0:04X}, Len: {1}, Data:".format(start, length))
+        start_int = int(start, 16)
+        length_int = int(length, 16)
+        print("GDB Write Binary Data Start: 0x{0:04X}, Len: {1}, Data:".format(start_int, length_int))
         
-        output = ""
-        for x in range(0, length):
-            if ((x % 16) == 0) and (x > 0):
-                output += "\n"
-            output += "{0:02x} ".format(payload[x])
-        print(output)
+        #output = ""
+        #for x in range(0, length_int):
+        #    if ((x % 16) == 0) and (x > 0):
+        #        output += "\n"
+        #    output += "{0:02x} ".format(payload[x])
+        #print(output)
 
-        if (length == 0) and (start == 0):
+        if (length_int == 0) and (start_int == 0):
             if (self._programming_state == 0):
                 print("GDB Write Entering Programming Mode")
                 self._programming_state = 1
@@ -772,16 +803,16 @@ class gdb_server(threading.Thread):
             else:
                 return self.create_rsp_packet(b"E01")
 
-        elif (start in range(0x0000, 0x10000)): # Flash
+        elif (start_int in range(0x0000, 0x10000)): # Flash
             if (self._programming_state == 1):
-                self.debugger.prepare_target_flash(start, payload)
+                self.debugger.prepare_target_flash(start_int, payload)
                 return self.create_rsp_packet(b"OK")
-            elif (length == 2):     # GDB wants to set a breakpoint, probably
+            elif (length_int == 2):     # GDB wants to set a breakpoint, probably
                 pass 
             return self.create_rsp_packet(b"E01")
 
 
-        elif (start in range (0x800000, 0x808000)): # I/O, Periph, RAM
+        elif (start_int in range (0x800000, 0x808000)): # I/O, Periph, RAM
             return self.create_rsp_packet(b"E01")
 
         else:
@@ -822,53 +853,39 @@ class gdb_server(threading.Thread):
     def breakpoint(self, data):
         # handle breakpoint/watchpoint commands
         split = data.split(b'#')[0].split(b',')
-        addr = int(split[1], 16)
-        print("GDB breakpoint {0}{1} @ {2}".format(data[0:1], int(data[1:2]), addr))
+        addr = int(split[1], 16) >> 1   # right shift address to get word address
+        print("GDB breakpoint {0} @ 0x{1:04X}".format(str(data[0:2]), addr))
 
         # handle software breakpoint Z0/z0
         if data[1:2] == b'0':
             if data[0:1] == b'Z':
-                if self.debugger.set_hw_breakpoint(0, addr):
-                    return self.create_rsp_packet(b"OK")
-            else:   # 'z'
-                if self.debugger.clear_hw_breakpoint(0):
-                    return self.create_rsp_packet(b"OK")
-            return self.create_rsp_packet(b'E01') #EPERM
-
-        # handle hardware breakpoint Z1/z1
-        if data[1:2] == b'1':
-            if data[0:1] == b'Z':
-                if self.debugger.set_hw_breakpoint(1, addr):
-                    return self.create_rsp_packet(b"OK")
-            else:   # 'z'
-                if self.debugger.clear_hw_breakpoint(1):
-                    return self.create_rsp_packet(b"OK")
+                if (self.hwbp_a == 0):
+                    if self.debugger.set_hw_breakpoint(0, addr):
+                        self.hwbp_a = addr
+                        self.debugger.get_ocd_regs()
+                        return self.create_rsp_packet(b"OK")
+                elif (self.hwbp_b == 0):
+                    if self.debugger.set_hw_breakpoint(1, addr):
+                        self.hwbp_b = addr
+                        self.debugger.get_ocd_regs()
+                        return self.create_rsp_packet(b"OK")
+            elif data[0:1] == b'z':
+                if (self.hwbp_a == addr):
+                    if self.debugger.clear_hw_breakpoint(0):
+                        self.hwbp_a = 0
+                        self.debugger.get_ocd_regs()
+                        return self.create_rsp_packet(b"OK")
+                elif (self.hwbp_b == addr):
+                    if self.debugger.clear_hw_breakpoint(1):
+                        self.hwbp_b = 0
+                        self.debugger.get_ocd_regs()
+                        return self.create_rsp_packet(b"OK")
             return self.create_rsp_packet(b'E01') #EPERM
 
         return self.create_rsp_packet(b'E01') #EPERM
         #EOF
-    
 
-    def decode_hex_string(self, data, endian = "little") -> int:
-        ret_val = 0
-    
-        length = len(data)
-        n = 0
-        pos = 0
-        while (n < length):
-            num = int(data[n:n+2], 16) & 0xFF
-            n += 2
-            if (endian == "little"):
-                ret_val += num << (8*pos)
-            else:
-                ret_val = (ret_val << 8) + num
-            
-            pos += 1
 
-        return ret_val
-        #EOF
-    
-    
     def get_uint32_from_buf(buf, pos:int = 0, endian = "little"):
         retval = 0
         if (endian == "little"):
@@ -885,11 +902,6 @@ class gdb_server(threading.Thread):
         print(retval)
         return retval
     #EOC
-
-
-
-
-
 
 
 
@@ -914,24 +926,36 @@ class gdbserver_socket_io_thread(threading.Thread):
     ## 100 ms timeout for socket and receive queue reads.
     RECEIVE_TIMEOUT = 0.1
 
-    def __init__(self, port:int, event_queue:queue.Queue):
+    def __init__(self, port:int, packet_size:int):
         super().__init__()
         self._port = port
         self._conn = None
+        self._cmd_rx = queue.Queue()
+        self._cmd_tx = queue.Queue()
         self._receive_queue = queue.Queue()
-        self._event_queue = event_queue
-        self._shutdown_event = threading.Event()
         self.interrupt_event = threading.Event()
-        self.conn_close_event = threading.Event()
+
         self.send_acks = True
         self._clear_send_acks = False
-        self._buffer = b''
         self._expecting_ack = False
         self.drop_reply = False
+        self._buffer = b''
         self._last_packet = b''
         self._closed = False
+        self._packet_size = packet_size
+        self._socket = socket.create_server(('localhost', self._port), backlog=4)
+        self._conn = None
+        self._addr = ''
         self.setDaemon(True)
-        self.start()
+    
+    def send_cmd(self, payload):
+        self._cmd_rx.put(payload, False)
+    
+    def recv_cmd(self):
+        try:
+            return self._cmd_tx.get(False)
+        except queue.Empty:
+            return None
 
     def set_send_acks(self, ack):
         if ack:
@@ -939,92 +963,106 @@ class gdbserver_socket_io_thread(threading.Thread):
         else:
             self._clear_send_acks = True
 
-    def stop(self):
-        self._shutdown_event.set()
 
     def send(self, packet):
-        if self._closed or not packet:
+        if (self._conn == None) or not packet:
             return
         if not self.drop_reply:
             self._last_packet = packet
             self._write_packet(packet)
-            print("Response: {0}".format(packet))
+            print("Sending: {0}".format(packet))
         else:
             self.drop_reply = False
 
-    def receive(self, block=True):
-        if self._closed:
-            self.stop()
-        while True:
-            try:
-                # If block is false, we'll get an Empty exception immediately if there
-                # are no packets in the queue. Same if block is true and it times out
-                # waiting on an empty queue.
-                return self._receive_queue.get(block, self.RECEIVE_TIMEOUT)
-            except queue.Empty:
-                # Only exit the loop if block is false or connection closed.
-                if not block:
-                    return None
-                if self._closed:
-                    self.stop()
+
+    def receive(self):
+        try:
+            return self._receive_queue.get(True, 0.1)
+        except queue.Empty:
+            return None
+
+    def close_sock(self, cmd):
+        if (self._conn != None):
+            self.close_conn(cmd)
+        self._socket.close()
+        self._socket = None
+
+    def close_conn(self, cmd):
+        if (self._conn != None):
+            self._conn.shutdown(socket.SHUT_RDWR)
+            self._conn.close()
+            self._conn = None
+        self.send_acks = True
+        self._clear_send_acks = False
+        self._expecting_ack = False
+        self.drop_reply = False
+        self._cmd_tx.put(cmd, True, 0.1)
+
 
     def run(self):
-        print("Starting GDB server packet I/O thread")
-        
-        sock = socket.create_server(('localhost', self._port), backlog=2)
-        self._conn, addr = sock.accept()
-        
-        print("Client connected to port {0}!".format(self._port))
-        while not self._shutdown_event.is_set():
+        print("GDB packet I/O thread started")
+
+        while self._socket != None:
+            if self._conn != None:
+                try:
+                    data = self._conn.recv(self._packet_size)
+
+                    # Handle closed connection
+                    if len(data) == 0:
+                        print("GDB packet thread: other side closed connection")
+                        self.close_conn("Disconnected")
+
+                    self._buffer += data
+                    self._process_data()
+                except (ConnectionAbortedError, ConnectionResetError) as err:
+                    print("GDB packet thread: connection unexpectedly closed during receive ({0})".format(err))
+                    self.close_conn("Closed")
+                except socket.timeout:
+                    # Ignore timeouts.
+                    pass
+                except OSError as err:
+                    print("Error in packet IO thread: {0}".format(err))
+                    self.close_conn("Closed")
+
             try:
-                data = self._conn.recv(2048)
-
-                # Handle closed connection
-                if len(data) == 0:
-                    print("GDB packet thread: other side closed connection")
-                    self._closed = True
+                cmd = self._cmd_rx.get(False)
+                if cmd == "Open":
+                    print('GDB awaiting connection on port {0}'.format(self._port))
+                    self._conn, self._addr = self._socket.accept()
+                    print("Client connected!")
+                elif cmd == "Stop":
+                    if self._conn != None:
+                        self.send(b"$X09#C1")
+                        self.close_sock("Stopped")
                     break
-
-                self._buffer += data
-            except (ConnectionAbortedError, ConnectionResetError) as err:
-                print("GDB packet thread: connection unexpectedly closed during receive ({0})".format(err))
-                self._closed = True
-                break
-            except socket.timeout:
-                # Ignore timeouts.
+                elif cmd == "Reopen":
+                    if self._conn == None:
+                        print('GDB awaiting connection on port {0}'.format(self._port))
+                        self._conn, self._addr = self._socket.accept()
+                        print("Client reconnected!")
+            except:
                 pass
-            except OSError as err:
-                print("Error in packet IO thread: {0}".format(err))
-
-            if self._shutdown_event.is_set():
-                break
-
-            self._process_data()
+            sleep(0.1)
             #EOL
-        
-        print("Client disconnected from port {0}!".format(self._port))
-        self.send(b"$D#44")
-        self._event_queue.put("disconnect")
-        self._conn.close()
-        self.stop()
-    #EOF
+        print("GDB packet I/O thread stopped")
+        #EOF
 
     def _write_packet(self, packet):
-
         # Make sure the entire packet is sent.
-        try:
-            remaining = len(packet)
-            while remaining:
-                written = self._conn.send(packet)
-                remaining -= written
-                if remaining:
-                    packet = packet[written:]
-        except (ConnectionAbortedError, ConnectionResetError) as err:
-            LOG.warning("GDB packet thread: connection unexpectedly closed during send (%s)", err)
-            self._closed = True
+        if self._conn != None:
+            try:
+                remaining = len(packet)
+                while remaining:
+                    written = self._conn.send(packet)
+                    remaining -= written
+                    if remaining:
+                        packet = packet[written:]
+            except (ConnectionAbortedError, ConnectionResetError) as err:
+                LOG.warning("GDB packet thread: connection unexpectedly closed during send (%s)", err)
+                self._closed = True
 
-        if self.send_acks:
-            self._expecting_ack = True
+            if self.send_acks:
+                self._expecting_ack = True
 
     def _check_expected_ack(self):
         # Handle expected ack.
@@ -1085,3 +1123,123 @@ class gdbserver_socket_io_thread(threading.Thread):
             self._receive_queue.put(packet)
     #EOF
 #EOC
+
+
+class console_input(threading.Thread):
+    def __init__(self, gdbserver:gdb_server):
+        super().__init__()
+        self.server = gdbserver
+        self.debugger = gdbserver.debugger
+        self.setDaemon(True)
+    
+    # some manual Function to assist debugging
+    def run(self):
+        while True:
+            user_in = input("")
+
+            if (user_in == "P"):
+                if self.debugger.find_icd() is not None:
+                    self.debugger.refresh_icd_status()
+
+            elif (user_in == "init"):
+                #debugger.live_connect_to_device()
+                #gdb_ser = pk_gdbserver.gdb_server(50000, debugger)
+                pass
+            
+            elif (user_in == "detach") or (user_in == "stop"):
+                self.debugger.detach_target()
+
+            elif (user_in.startswith("Volt")):
+                self.debugger.get_Voltages()
+            
+            elif (user_in == ("refresh")):
+                self.debugger.refresh_icd_status()
+            
+            elif (user_in == ("attach")):
+                self.debugger.attach_target()
+            
+            elif (user_in == ("status")):
+                self.debugger.get_halt_status()
+
+            elif (user_in == ("reset")):
+                self.debugger.reset_Target()
+            
+            elif (user_in == ("run")):
+                self.debugger.resume_Target()
+            
+            elif (user_in == ("halt")):
+                self.debugger.halt_Target()
+            
+            elif (user_in == ("ocd")):
+                self.debugger.get_ocd_regs()
+            
+            elif (user_in == ("hold")):
+                self.debugger.hold_in_reset()
+            
+            elif (user_in == ("release")):
+                self.debugger.release_from_reset()
+            
+            elif (user_in == ("recover script")):
+                self.debugger.recover_script()
+            
+            elif (user_in == ("enter Prog")):
+                self.debugger.enter_Prog_Mode()
+            
+            elif (user_in == ("exit Prog")):
+                self.debugger.exit_Prog_Mode()
+            
+            elif (user_in == ("enter Debug")):
+                self.debugger.enter_Debug_Mode()
+            
+            elif (user_in == ("exit Debug")):
+                self.debugger.exit_Debug_Mode()
+            
+            elif (user_in == ("probe")):
+                self.debugger._probeMode = self.debugger.get_probe_status()
+                print("probe in {0} status".format(self.debugger._probeMode))
+
+            elif (user_in == "q"):
+                self.debugger.detach_target()
+                return
+                
+            sleep(0.1)
+
+
+
+def main():
+    parser = argparse.ArgumentParser(description="AVR-GDB compatible server to interact with a PICkit 4/5")
+
+
+    parser.add_argument("-p", "--part", required=True, type=str, help="Name of the target")
+    parser.add_argument("-P", "--Port", default=50000, type=int, help="localhost Port Number")
+    parser.add_argument("-V", "--Voltage", type=int, help="Voltage in mV to supply to target")
+    parser.add_argument("-b", "-B", "--baud", "--bitrate", default=200, type=int, help="UPDI Frequency in kHz")
+    parser.add_argument("-a", "--alive", nargs='?', const=True, default=False, type=bool, help="")
+
+    args = parser.parse_args()
+
+
+    server = gdb_server(args.Port, args.part, args.Voltage, args.baud, args.alive)
+    input = console_input(server)
+
+    def exit_handler(sig, frame):
+        print("Ctrl+C received, exiting")
+        #if (debugger != None):
+        #    server.send_stop_notification(SIGKILL)
+        #    debugger.detach_target()
+        server.stop()
+        server.join()
+        
+        quit()
+
+
+
+    signal.signal(signal.SIGINT, exit_handler)  # Catch Ctrl+C
+
+    while True:
+        if server.quit_flag is True:
+            quit()
+        sleep(0.1)
+
+if __name__ == "__main__":
+    main()
