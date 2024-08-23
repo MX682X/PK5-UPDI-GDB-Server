@@ -6,6 +6,7 @@ Things to know:
 2. I'm no experienced Python programmer, so don't expect much code wise
 3. There might be some bugs, but I hope I've ironed out most.
   - Known bugs: The Arduino debugger plug-in seems to hang after resetting the target
+  - Supporting only the two hardware breakpoints, no software breakpoints (yet)
 4. needs pyusb, libusb_package and ElementTree python package to work
 5. You'll need a copy of avr-gdb.exe with XML support. One is distributed with the Studio. It needs to be copied to the compiler dictionary
 6. To start a GDB session, execute e.g. "pk_gdbserver.py -pavr32dd28 -V5000 -b750 -a" in a command lines
